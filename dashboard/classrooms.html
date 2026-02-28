@@ -1,0 +1,568 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Synapse — My Classrooms</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap"
+        rel="stylesheet" />
+    <style>
+        *,
+        *::before,
+        *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        :root {
+            --orange: #f97316;
+            --bg: #080808;
+            --surface: #111;
+            --border: #1e1e1e;
+        }
+
+        body {
+            background: var(--bg);
+            color: #e5e5e5;
+            font-family: 'Inter', system-ui, sans-serif;
+            min-height: 100vh;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background-image: linear-gradient(rgba(249, 115, 22, 0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(249, 115, 22, 0.03) 1px, transparent 1px);
+            background-size: 40px 40px;
+            pointer-events: none;
+        }
+
+        /* Topbar */
+        .topbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 16px 28px;
+            border-bottom: 1px solid var(--border);
+            background: var(--surface);
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        .logo-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .logo-mark {
+            width: 30px;
+            height: 30px;
+            border-radius: 8px;
+            background: var(--orange);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            font-weight: 900;
+            color: #000;
+        }
+
+        .logo-name {
+            font-size: 16px;
+            font-weight: 800;
+            color: #fff;
+        }
+
+        .logo-name span {
+            color: var(--orange);
+        }
+
+        .user-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .user-name {
+            font-size: 13px;
+            color: #555;
+        }
+
+        .btn-logout {
+            background: transparent;
+            border: 1px solid #1e1e1e;
+            color: #444;
+            padding: 7px 14px;
+            border-radius: 8px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            font-family: inherit;
+            transition: all 0.15s;
+        }
+
+        .btn-logout:hover {
+            border-color: #444;
+            color: #888;
+        }
+
+        /* Main */
+        .main {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 40px 24px;
+        }
+
+        .page-header {
+            display: flex;
+            align-items: flex-end;
+            justify-content: space-between;
+            margin-bottom: 32px;
+        }
+
+        .page-title {
+            font-size: 26px;
+            font-weight: 900;
+            color: #fff;
+        }
+
+        .page-sub {
+            font-size: 13px;
+            color: #444;
+            margin-top: 4px;
+        }
+
+        .btn-create {
+            background: var(--orange);
+            color: #000;
+            border: none;
+            padding: 11px 22px;
+            border-radius: 10px;
+            font-size: 13px;
+            font-weight: 800;
+            cursor: pointer;
+            font-family: inherit;
+            transition: background 0.15s;
+        }
+
+        .btn-create:hover {
+            background: #fb923c;
+        }
+
+        /* Classroom grid */
+        .classrooms-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+            gap: 16px;
+        }
+
+        .class-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 22px;
+            cursor: pointer;
+            transition: border-color 0.2s, transform 0.15s;
+            text-decoration: none;
+            display: block;
+        }
+
+        .class-card:hover {
+            border-color: #f9731630;
+            transform: translateY(-2px);
+        }
+
+        .class-icon {
+            width: 44px;
+            height: 44px;
+            border-radius: 12px;
+            background: var(--orange);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 22px;
+            margin-bottom: 14px;
+        }
+
+        .class-name {
+            font-size: 15px;
+            font-weight: 800;
+            color: #fff;
+            margin-bottom: 4px;
+        }
+
+        .class-id {
+            font-size: 11px;
+            color: #444;
+            font-weight: 600;
+            letter-spacing: 0.05em;
+            margin-bottom: 14px;
+            font-family: monospace;
+        }
+
+        .class-stats {
+            display: flex;
+            gap: 16px;
+        }
+
+        .class-stat-val {
+            font-size: 16px;
+            font-weight: 800;
+            color: var(--orange);
+        }
+
+        .class-stat-lbl {
+            font-size: 10px;
+            color: #444;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            margin-top: 2px;
+        }
+
+        /* Empty state */
+        .empty {
+            text-align: center;
+            padding: 80px 24px;
+        }
+
+        .empty-icon {
+            font-size: 52px;
+            margin-bottom: 16px;
+        }
+
+        .empty-title {
+            font-size: 18px;
+            font-weight: 800;
+            color: #fff;
+            margin-bottom: 6px;
+        }
+
+        .empty-sub {
+            font-size: 13px;
+            color: #444;
+            margin-bottom: 24px;
+        }
+
+        /* Modal overlay */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 100;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-overlay.open {
+            display: flex;
+        }
+
+        .modal {
+            background: var(--surface);
+            border: 1px solid #2a2a2a;
+            border-radius: 18px;
+            padding: 32px;
+            width: 100%;
+            max-width: 440px;
+            position: relative;
+        }
+
+        .modal-title {
+            font-size: 20px;
+            font-weight: 800;
+            color: #fff;
+            margin-bottom: 6px;
+        }
+
+        .modal-sub {
+            font-size: 12px;
+            color: #444;
+            margin-bottom: 24px;
+        }
+
+        .modal-close {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: transparent;
+            border: none;
+            color: #444;
+            font-size: 20px;
+            cursor: pointer;
+            line-height: 1;
+        }
+
+        .modal-close:hover {
+            color: #888;
+        }
+
+        .field {
+            margin-bottom: 16px;
+        }
+
+        label {
+            display: block;
+            font-size: 11px;
+            font-weight: 700;
+            color: #555;
+            text-transform: uppercase;
+            letter-spacing: 0.07em;
+            margin-bottom: 6px;
+        }
+
+        input,
+        select {
+            width: 100%;
+            background: #0d0d0d;
+            border: 1px solid #1e1e1e;
+            border-radius: 9px;
+            padding: 11px 14px;
+            font-size: 13px;
+            color: #e5e5e5;
+            font-family: inherit;
+            outline: none;
+            transition: border-color 0.15s;
+        }
+
+        input:focus,
+        select:focus {
+            border-color: var(--orange);
+        }
+
+        input::placeholder {
+            color: #333;
+        }
+
+        select option {
+            background: #111;
+        }
+
+        .btn-primary {
+            width: 100%;
+            background: var(--orange);
+            color: #000;
+            border: none;
+            padding: 13px;
+            border-radius: 10px;
+            font-size: 14px;
+            font-weight: 800;
+            cursor: pointer;
+            transition: background 0.15s;
+            font-family: inherit;
+        }
+
+        .btn-primary:hover {
+            background: #fb923c;
+        }
+
+        /* Generated ID preview */
+        .id-preview {
+            background: #0d0d0d;
+            border: 1px solid #f9731625;
+            border-radius: 10px;
+            padding: 14px 16px;
+            margin-bottom: 16px;
+            display: none;
+        }
+
+        .id-preview.show {
+            display: block;
+        }
+
+        .id-label {
+            font-size: 10px;
+            font-weight: 700;
+            color: #555;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            margin-bottom: 6px;
+        }
+
+        .id-value {
+            font-size: 20px;
+            font-weight: 900;
+            color: var(--orange);
+            letter-spacing: 0.05em;
+            font-family: monospace;
+        }
+
+        .id-hint {
+            font-size: 11px;
+            color: #444;
+            margin-top: 4px;
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- Topbar -->
+    <header class="topbar">
+        <div class="logo-row">
+            <div class="logo-mark">S</div>
+            <div class="logo-name">Syn<span>apse</span></div>
+        </div>
+        <div class="user-row">
+            <span class="user-name" id="userName"></span>
+            <button class="btn-logout" onclick="logout()">Sign Out</button>
+        </div>
+    </header>
+
+    <!-- Main -->
+    <main class="main">
+        <div class="page-header">
+            <div>
+                <div class="page-title">My Classrooms</div>
+                <div class="page-sub">Each classroom gets a unique ID students enter in their VS Code extension.</div>
+            </div>
+            <button class="btn-create" onclick="openModal()">+ New Classroom</button>
+        </div>
+
+        <div class="classrooms-grid" id="classGrid"></div>
+    </main>
+
+    <!-- Create Classroom Modal -->
+    <div class="modal-overlay" id="modal">
+        <div class="modal">
+            <button class="modal-close" onclick="closeModal()">✕</button>
+            <div class="modal-title">Create Classroom</div>
+            <div class="modal-sub">Students will enter this classroom's ID in the Synapse extension to join.</div>
+
+            <div class="field">
+                <label>Classroom Name</label>
+                <input type="text" id="className" placeholder="e.g. Python Bootcamp Batch 12" oninput="previewId()" />
+            </div>
+            <div class="field">
+                <label>Language</label>
+                <select id="classLang">
+                    <option value="python">Python</option>
+                    <option value="javascript">JavaScript</option>
+                    <option value="java">Java</option>
+                </select>
+            </div>
+            <div class="field">
+                <label>Batch / Week Start</label>
+                <input type="text" id="classBatch" placeholder="e.g. Feb 2026" oninput="previewId()" />
+            </div>
+
+            <!-- Auto-generated ID preview -->
+            <div class="id-preview" id="idPreview">
+                <div class="id-label">Classroom ID (auto-generated)</div>
+                <div class="id-value" id="idValue">—</div>
+                <div class="id-hint">Share this with your students — they paste it in VS Code settings.</div>
+            </div>
+
+            <button class="btn-primary" onclick="createClassroom()">Create Classroom →</button>
+        </div>
+    </div>
+
+    <script>
+        // ── Auth guard ──
+        const user = JSON.parse(localStorage.getItem('synapse_user') || 'null');
+        if (!user || user.role !== 'teacher') { window.location.href = 'auth.html'; }
+        document.getElementById('userName').textContent = user?.name || user?.email;
+
+        function logout() {
+            localStorage.removeItem('synapse_user');
+            window.location.href = 'auth.html';
+        }
+
+        // ── Classroom storage (localStorage as mock DB) ──
+        function getClassrooms() {
+            return JSON.parse(localStorage.getItem('synapse_classrooms') || '[]');
+        }
+        function saveClassrooms(cls) {
+            localStorage.setItem('synapse_classrooms', JSON.stringify(cls));
+        }
+
+        // ── Render grid ──
+        function renderGrid() {
+            const classrooms = getClassrooms();
+            const grid = document.getElementById('classGrid');
+            if (classrooms.length === 0) {
+                grid.innerHTML = `
+        <div class="empty" style="grid-column:1/-1">
+          <div class="empty-icon">🏫</div>
+          <div class="empty-title">No classrooms yet</div>
+          <div class="empty-sub">Create your first classroom and share the ID with your students.</div>
+          <button class="btn-create" onclick="openModal()">+ Create your first classroom</button>
+        </div>`;
+                return;
+            }
+            grid.innerHTML = classrooms.map(c => `
+      <a class="class-card" href="index.html?classroomId=${c.id}&classroomName=${encodeURIComponent(c.name)}">
+        <div class="class-icon">🏫</div>
+        <div class="class-name">${c.name}</div>
+        <div class="class-id">ID: ${c.id}</div>
+        <div class="class-stats">
+          <div>
+            <div class="class-stat-val">${c.students || 0}</div>
+            <div class="class-stat-lbl">Students</div>
+          </div>
+          <div>
+            <div class="class-stat-val">${c.sessions || 0}</div>
+            <div class="class-stat-lbl">Sessions</div>
+          </div>
+          <div>
+            <div class="class-stat-val">${c.lang}</div>
+            <div class="class-stat-lbl">Language</div>
+          </div>
+        </div>
+      </a>`).join('');
+        }
+
+        // ── ID generator ──
+        function generateId(name, batch) {
+            const prefix = (name || 'CLASS').replace(/[^a-zA-Z0-9]/g, '').substring(0, 6).toUpperCase();
+            const year = new Date().getFullYear();
+            const rand = Math.random().toString(36).substring(2, 6).toUpperCase();
+            return `${prefix}-${year}-${rand}`;
+        }
+
+        function previewId() {
+            const name = document.getElementById('className').value;
+            const batch = document.getElementById('classBatch').value;
+            const preview = document.getElementById('idPreview');
+            const idEl = document.getElementById('idValue');
+            if (name.length > 2) {
+                preview.classList.add('show');
+                idEl.textContent = generateId(name, batch);
+            } else {
+                preview.classList.remove('show');
+            }
+        }
+
+        function openModal() { document.getElementById('modal').classList.add('open'); }
+        function closeModal() {
+            document.getElementById('modal').classList.remove('open');
+            document.getElementById('className').value = '';
+            document.getElementById('classBatch').value = '';
+            document.getElementById('idPreview').classList.remove('show');
+        }
+
+        function createClassroom() {
+            const name = document.getElementById('className').value.trim();
+            const lang = document.getElementById('classLang').value;
+            const batch = document.getElementById('classBatch').value.trim();
+            if (!name) { document.getElementById('className').focus(); return; }
+
+            const id = document.getElementById('idValue').textContent || generateId(name, batch);
+            const classrooms = getClassrooms();
+            classrooms.push({ id, name, lang, batch, students: 0, sessions: 0, createdAt: Date.now() });
+            saveClassrooms(classrooms);
+            closeModal();
+            renderGrid();
+        }
+
+        // ── Boot ──
+        renderGrid();
+    </script>
+</body>
+
+</html>

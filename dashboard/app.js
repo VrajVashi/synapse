@@ -5,66 +5,84 @@
 
 import { API } from './api.js';
 
+// ── Auth guard ─────────────────────────────────────────────────────────────
+const user = JSON.parse(localStorage.getItem('synapse_user') || 'null');
+if (!user || user.role !== 'teacher') { window.location.href = 'auth.html'; }
+
+function logout() {
+  localStorage.removeItem('synapse_user');
+  window.location.href = 'auth.html';
+}
+
+// ── Read classroom from URL ────────────────────────────────────────────────
+const params = new URLSearchParams(window.location.search);
+const classroomId = params.get('classroomId') || 'DEMO';
+const classroomName = params.get('classroomName') || 'Demo Classroom';
+
+// Show in sidebar footer
+const cohortEl = document.getElementById('cohortName');
+if (cohortEl) { cohortEl.textContent = classroomName; }
+
 // ── Navigation ────────────────────────────────────────────────────────────
 const navItems = document.querySelectorAll('.nav-item');
 const views = document.querySelectorAll('.view');
 
 const titles = {
-    overview: ['Overview', 'Week summary across your cohort'],
-    heatmap: ['Struggle Heatmap', 'Most common error patterns this week'],
-    students: ['At-Risk Students', 'Students flagged for instructor intervention'],
-    mastery: ['Mastery Tracking', 'Concept mastery rates vs target thresholds'],
-    curriculum: ['Curriculum Insights', 'AI-generated teaching schedule recommendations'],
+  overview: ['Overview', 'Week summary across your cohort'],
+  heatmap: ['Struggle Heatmap', 'Most common error patterns this week'],
+  students: ['At-Risk Students', 'Students flagged for instructor intervention'],
+  mastery: ['Mastery Tracking', 'Concept mastery rates vs target thresholds'],
+  curriculum: ['Curriculum Insights', 'AI-generated teaching schedule recommendations'],
 };
 
 function switchView(viewId) {
-    navItems.forEach(n => n.classList.toggle('active', n.dataset.view === viewId));
-    views.forEach(v => v.classList.toggle('active', v.id === `view-${viewId}`));
-    const [title, sub] = titles[viewId] || ['Overview', ''];
-    document.getElementById('pageTitle').textContent = title;
-    document.getElementById('pageSub').textContent = sub;
+  navItems.forEach(n => n.classList.toggle('active', n.dataset.view === viewId));
+  views.forEach(v => v.classList.toggle('active', v.id === `view-${viewId}`));
+  const [title, sub] = titles[viewId] || ['Overview', ''];
+  document.getElementById('pageTitle').textContent = title;
+  document.getElementById('pageSub').textContent = sub;
 }
 
 navItems.forEach(item => {
-    item.addEventListener('click', e => {
-        e.preventDefault();
-        switchView(item.dataset.view);
-    });
+  item.addEventListener('click', e => {
+    e.preventDefault();
+    switchView(item.dataset.view);
+  });
 });
 
 // "See all" card links also navigate
 document.querySelectorAll('.card-link[data-view]').forEach(link => {
-    link.addEventListener('click', e => {
-        e.preventDefault();
-        switchView(link.dataset.view);
-    });
+  link.addEventListener('click', e => {
+    e.preventDefault();
+    switchView(link.dataset.view);
+  });
 });
 
 // ── Color helpers ─────────────────────────────────────────────────────────
 function barColor(pct) {
-    if (pct >= 60) return '#ef4444';
-    if (pct >= 40) return '#eab308';
-    return '#f97316';
+  if (pct >= 60) return '#ef4444';
+  if (pct >= 40) return '#eab308';
+  return '#f97316';
 }
 
 // ── Render: Overview ─────────────────────────────────────────────────────
 async function renderOverview() {
-    const [stats, heatmap, atRisk] = await Promise.all([
-        API.getWeeklyStats(),
-        API.getHeatmap(),
-        API.getAtRisk(),
-    ]);
+  const [stats, heatmap, atRisk] = await Promise.all([
+    API.getWeeklyStats(),
+    API.getHeatmap(),
+    API.getAtRisk(),
+  ]);
 
-    document.getElementById('ov-sessions').textContent = stats.totalSessions.toLocaleString();
-    document.getElementById('ov-delta').textContent = `${stats.improvementVsLastWeek} vs last week`;
-    document.getElementById('ov-avgfix').textContent = stats.avgFixTime;
-    document.getElementById('ov-quiz').textContent = stats.quizCompletionRate;
-    document.getElementById('ov-quizbar').style.width = stats.quizCompletionRate + '%';
-    document.getElementById('ov-atrisk').textContent = atRisk.length;
+  document.getElementById('ov-sessions').textContent = stats.totalSessions.toLocaleString();
+  document.getElementById('ov-delta').textContent = `${stats.improvementVsLastWeek} vs last week`;
+  document.getElementById('ov-avgfix').textContent = stats.avgFixTime;
+  document.getElementById('ov-quiz').textContent = stats.quizCompletionRate;
+  document.getElementById('ov-quizbar').style.width = stats.quizCompletionRate + '%';
+  document.getElementById('ov-atrisk').textContent = atRisk.length;
 
-    // Mini heatmap (top 3)
-    const hmEl = document.getElementById('ov-heatmap');
-    hmEl.innerHTML = heatmap.slice(0, 3).map(row => `
+  // Mini heatmap (top 3)
+  const hmEl = document.getElementById('ov-heatmap');
+  hmEl.innerHTML = heatmap.slice(0, 3).map(row => `
     <div class="hm-row">
       <div class="hm-top">
         <span class="hm-name">${row.errorType}</span>
@@ -80,9 +98,9 @@ async function renderOverview() {
     </div>
   `).join('');
 
-    // Mini at-risk
-    const riskEl = document.getElementById('ov-risk');
-    riskEl.innerHTML = atRisk.slice(0, 3).map(s => `
+  // Mini at-risk
+  const riskEl = document.getElementById('ov-risk');
+  riskEl.innerHTML = atRisk.slice(0, 3).map(s => `
     <div class="risk-row">
       <div>
         <div class="risk-name">${s.name}</div>
@@ -95,10 +113,10 @@ async function renderOverview() {
 
 // ── Render: Heatmap ───────────────────────────────────────────────────────
 async function renderHeatmap() {
-    const heatmap = await API.getHeatmap();
-    const el = document.getElementById('hm-full');
+  const heatmap = await API.getHeatmap();
+  const el = document.getElementById('hm-full');
 
-    el.innerHTML = `
+  el.innerHTML = `
     <div class="hm-full-row header-row">
       <span>#&nbsp;&nbsp;Error Pattern</span>
       <span>Attempt Volume</span>
@@ -127,10 +145,10 @@ async function renderHeatmap() {
 
 // ── Render: At-Risk Students ──────────────────────────────────────────────
 async function renderStudents() {
-    const students = await API.getAtRisk();
-    const el = document.getElementById('students-body');
+  const students = await API.getAtRisk();
+  const el = document.getElementById('students-body');
 
-    el.innerHTML = students.map(s => `
+  el.innerHTML = students.map(s => `
     <tr>
       <td><span class="student-name">${s.name}</span></td>
       <td><span class="hm-chip rate" style="background:transparent;border:none;padding:0">${s.errorType}</span></td>
@@ -151,10 +169,10 @@ async function renderStudents() {
 
 // ── Render: Mastery ───────────────────────────────────────────────────────
 async function renderMastery() {
-    const mastery = await API.getMastery();
-    const el = document.getElementById('mastery-list');
+  const mastery = await API.getMastery();
+  const el = document.getElementById('mastery-list');
 
-    el.innerHTML = mastery.map(m => `
+  el.innerHTML = mastery.map(m => `
     <div class="mastery-row">
       <span class="mastery-concept">${m.concept}</span>
       <div class="mastery-bar-wrap">
@@ -171,12 +189,12 @@ async function renderMastery() {
 
 // ── Render: Curriculum Insights ───────────────────────────────────────────
 async function renderCurriculum() {
-    const data = await API.getCurriculum();
-    const el = document.getElementById('curriculum-list');
+  const data = await API.getCurriculum();
+  const el = document.getElementById('curriculum-list');
 
-    const typeLabel = { gap: 'Reinforcement Gap', missing: 'Missing Prerequisite', ok: 'On Track' };
+  const typeLabel = { gap: 'Reinforcement Gap', missing: 'Missing Prerequisite', ok: 'On Track' };
 
-    el.innerHTML = data.map(item => `
+  el.innerHTML = data.map(item => `
     <div class="cur-card ${item.type}">
       <div class="cur-top">
         <span class="cur-concept">${item.concept}</span>
@@ -193,23 +211,23 @@ async function renderCurriculum() {
 
 // ── Boot ──────────────────────────────────────────────────────────────────
 async function boot() {
-    const [cohort] = await Promise.all([
-        API.getCohortInfo(),
-    ]);
+  const [cohort] = await Promise.all([
+    API.getCohortInfo(),
+  ]);
 
-    document.getElementById('cohortName').textContent = cohort.name;
-    document.getElementById('pageSub').textContent = `${cohort.name} · Week ${cohort.week}`;
-    document.getElementById('activeToday').textContent = cohort.activeToday;
-    document.getElementById('totalStudents').textContent = cohort.totalStudents;
+  document.getElementById('cohortName').textContent = cohort.name;
+  document.getElementById('pageSub').textContent = `${cohort.name} · Week ${cohort.week}`;
+  document.getElementById('activeToday').textContent = cohort.activeToday;
+  document.getElementById('totalStudents').textContent = cohort.totalStudents;
 
-    // Pre-render all views so navigation is instant
-    await Promise.all([
-        renderOverview(),
-        renderHeatmap(),
-        renderStudents(),
-        renderMastery(),
-        renderCurriculum(),
-    ]);
+  // Pre-render all views so navigation is instant
+  await Promise.all([
+    renderOverview(),
+    renderHeatmap(),
+    renderStudents(),
+    renderMastery(),
+    renderCurriculum(),
+  ]);
 }
 
 boot();

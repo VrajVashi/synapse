@@ -1,13 +1,16 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Synapse — Instructor Dashboard</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap"
+    rel="stylesheet" />
   <link rel="stylesheet" href="styles.css" />
 </head>
+
 <body>
 
   <!-- ── Sidebar ─────────────────────────────────────────────────────── -->
@@ -49,6 +52,12 @@
     <!-- Topbar -->
     <header class="topbar">
       <div class="topbar-left">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px">
+          <a href="classrooms.html"
+            style="color:#444;font-size:12px;text-decoration:none;display:flex;align-items:center;gap:4px">
+            ← Classrooms
+          </a>
+        </div>
         <h1 class="page-title" id="pageTitle">Overview</h1>
         <div class="page-sub" id="pageSub">Loading cohort data...</div>
       </div>
@@ -61,7 +70,7 @@
           <span class="ts-label">Total students</span>
           <span class="ts-value" id="totalStudents">—</span>
         </div>
-        <button class="btn-export">Export Report</button>
+        <button class="btn-export" onclick="logout()">Sign Out</button>
       </div>
     </header>
 
@@ -83,7 +92,9 @@
         <div class="stat-card">
           <div class="stat-label">Quiz Completion Rate</div>
           <div class="stat-value progress-val"><span id="ov-quiz">—</span><span class="stat-unit">%</span></div>
-          <div class="progress-bar-sm"><div class="pb-fill" id="ov-quizbar"></div></div>
+          <div class="progress-bar-sm">
+            <div class="pb-fill" id="ov-quizbar"></div>
+          </div>
         </div>
         <div class="stat-card">
           <div class="stat-label">At-Risk Students</div>
@@ -173,4 +184,5 @@
 
   <script type="module" src="app.js"></script>
 </body>
+
 </html>

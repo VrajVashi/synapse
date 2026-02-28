@@ -7,7 +7,7 @@ echo  ╚═══════════════════════�
 echo.
 
 :: Open browser after 1.5s delay
-start "" /b cmd /c "timeout /t 2 /nobreak >nul && start http://localhost:3000"
+start "" /b cmd /c "timeout /t 2 /nobreak >nul && start http://localhost:3000/auth.html"
 
 :: Try npx serve first (Node.js must be installed)
 where node >nul 2>&1

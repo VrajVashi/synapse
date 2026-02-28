@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Synapse — Sign In</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: #080808;
+      color: #e5e5e5;
+      font-family: 'Inter', system-ui, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* Background grid */
+    body::before {
+      content: '';
+      position: fixed; inset: 0;
+      background-image:
+        linear-gradient(rgba(249,115,22,0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(249,115,22,0.03) 1px, transparent 1px);
+      background-size: 40px 40px;
+      pointer-events: none;
+    }
+
+    .page { display: flex; align-items: center; justify-content: center; width: 100%; min-height: 100vh; padding: 24px; }
+
+    /* Left glow */
+    .glow {
+      position: fixed; top: 20%; left: -200px;
+      width: 500px; height: 500px;
+      background: radial-gradient(circle, rgba(249,115,22,0.08) 0%, transparent 70%);
+      pointer-events: none;
+    }
+
+    .card {
+      background: #111;
+      border: 1px solid #1e1e1e;
+      border-radius: 20px;
+      padding: 40px;
+      width: 100%;
+      max-width: 420px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .logo-row {
+      display: flex; align-items: center; gap: 10px; margin-bottom: 28px;
+    }
+    .logo-mark {
+      width: 36px; height: 36px; border-radius: 10px;
+      background: #f97316;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 20px; font-weight: 900; color: #000;
+    }
+    .logo-name { font-size: 20px; font-weight: 800; color: #fff; }
+    .logo-name span { color: #f97316; }
+
+    .card-heading { font-size: 22px; font-weight: 800; color: #fff; margin-bottom: 6px; }
+    .card-sub { font-size: 13px; color: #555; margin-bottom: 28px; }
+
+    /* Tabs */
+    .tabs {
+      display: grid; grid-template-columns: 1fr 1fr;
+      background: #0d0d0d; border: 1px solid #1e1e1e;
+      border-radius: 10px; padding: 4px;
+      margin-bottom: 24px;
+    }
+    .tab {
+      padding: 8px; border-radius: 8px; text-align: center;
+      cursor: pointer; font-size: 13px; font-weight: 600;
+      color: #444; transition: all 0.15s; border: none; background: transparent;
+    }
+    .tab.active { background: #f97316; color: #000; }
+
+    /* Form */
+    .form-section { display: none; }
+    .form-section.active { display: block; }
+
+    .field { margin-bottom: 16px; }
+    label { display: block; font-size: 11px; font-weight: 700; color: #555; text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 6px; }
+    input {
+      width: 100%;
+      background: #0d0d0d; border: 1px solid #1e1e1e;
+      border-radius: 9px; padding: 11px 14px;
+      font-size: 13px; color: #e5e5e5;
+      font-family: inherit; outline: none;
+      transition: border-color 0.15s;
+    }
+    input:focus { border-color: #f97316; }
+    input::placeholder { color: #333; }
+
+    .role-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 16px; }
+    .role-card {
+      border: 1.5px solid #1e1e1e; border-radius: 10px;
+      padding: 14px 12px; cursor: pointer; text-align: center;
+      transition: all 0.15s; background: #0d0d0d;
+    }
+    .role-card:hover { border-color: #f97316; }
+    .role-card.selected { border-color: #f97316; background: #f9731610; }
+    .role-card input[type=radio] { display: none; }
+    .role-icon { font-size: 22px; margin-bottom: 6px; }
+    .role-label { font-size: 12px; font-weight: 700; color: #555; }
+    .role-card.selected .role-label { color: #f97316; }
+
+    .btn-primary {
+      width: 100%;
+      background: #f97316; color: #000;
+      border: none; padding: 13px;
+      border-radius: 10px; font-size: 14px;
+      font-weight: 800; cursor: pointer;
+      transition: background 0.15s;
+      font-family: inherit; margin-top: 4px;
+    }
+    .btn-primary:hover { background: #fb923c; }
+
+    .divider { display: flex; align-items: center; gap: 12px; margin: 20px 0; }
+    .divider::before, .divider::after { content: ''; flex: 1; height: 1px; background: #1e1e1e; }
+    .divider span { font-size: 11px; color: #333; }
+
+    .switch-link { text-align: center; font-size: 12px; color: #555; }
+    .switch-link a { color: #f97316; text-decoration: none; font-weight: 600; }
+
+    .error-msg { background: #ef444415; border: 1px solid #ef444430; color: #f87171; border-radius: 8px; padding: 10px 14px; font-size: 12px; margin-bottom: 16px; display: none; }
+    .error-msg.show { display: block; }
+  </style>
+</head>
+<body>
+<div class="glow"></div>
+<div class="page">
+  <div class="card">
+    <div class="logo-row">
+      <div class="logo-mark">S</div>
+      <div class="logo-name">Syn<span>apse</span></div>
+    </div>
+
+    <!-- Tab switcher -->
+    <div class="tabs">
+      <button class="tab active" id="tabSignin" onclick="switchTab('signin')">Sign In</button>
+      <button class="tab" id="tabSignup" onclick="switchTab('signup')">Sign Up</button>
+    </div>
+
+    <!-- Sign In -->
+    <div class="form-section active" id="formSignin">
+      <div class="error-msg" id="signinError">Invalid email or password.</div>
+      <div class="field">
+        <label>Email</label>
+        <input type="email" id="siEmail" placeholder="you@bootcamp.com" />
+      </div>
+      <div class="field">
+        <label>Password</label>
+        <input type="password" id="siPassword" placeholder="••••••••" />
+      </div>
+      <button class="btn-primary" onclick="handleSignin()">Sign In →</button>
+      <div class="divider"><span>or</span></div>
+      <div class="switch-link">Don't have an account? <a href="#" onclick="switchTab('signup')">Sign Up</a></div>
+    </div>
+
+    <!-- Sign Up -->
+    <div class="form-section" id="formSignup">
+      <div class="error-msg" id="signupError">Please fill in all fields.</div>
+      <div class="field">
+        <label>I am a...</label>
+        <div class="role-grid">
+          <label class="role-card selected" id="roleTeacher">
+            <input type="radio" name="role" value="teacher" checked onchange="selectRole('teacher')">
+            <div class="role-icon">🧑‍🏫</div>
+            <div class="role-label">Teacher</div>
+          </label>
+          <label class="role-card" id="roleStudent">
+            <input type="radio" name="role" value="student" onchange="selectRole('student')">
+            <div class="role-icon">👨‍💻</div>
+            <div class="role-label">Student</div>
+          </label>
+        </div>
+      </div>
+      <div class="field">
+        <label>Full Name</label>
+        <input type="text" id="suName" placeholder="e.g. Priya Sharma" />
+      </div>
+      <div class="field">
+        <label>Email</label>
+        <input type="email" id="suEmail" placeholder="you@bootcamp.com" />
+      </div>
+      <div class="field">
+        <label>Password</label>
+        <input type="password" id="suPassword" placeholder="min. 8 characters" />
+      </div>
+      <button class="btn-primary" onclick="handleSignup()">Create Account →</button>
+      <div class="divider"><span>or</span></div>
+      <div class="switch-link">Already have an account? <a href="#" onclick="switchTab('signin')">Sign In</a></div>
+    </div>
+  </div>
+</div>
+
+<script>
+  // ── Mock auth (replace with real API calls when backend is ready) ──
+  const MOCK_USERS = [
+    { email: 'teacher@demo.com', password: 'demo1234', role: 'teacher', name: 'Demo Teacher' },
+    { email: 'student@demo.com', password: 'demo1234', role: 'student', name: 'Demo Student' },
+  ];
+
+  function switchTab(tab) {
+    document.getElementById('tabSignin').classList.toggle('active', tab === 'signin');
+    document.getElementById('tabSignup').classList.toggle('active', tab === 'signup');
+    document.getElementById('formSignin').classList.toggle('active', tab === 'signin');
+    document.getElementById('formSignup').classList.toggle('active', tab === 'signup');
+  }
+
+  function selectRole(role) {
+    document.getElementById('roleTeacher').classList.toggle('selected', role === 'teacher');
+    document.getElementById('roleStudent').classList.toggle('selected', role === 'student');
+  }
+
+  function handleSignin() {
+    const email    = document.getElementById('siEmail').value.trim();
+    const password = document.getElementById('siPassword').value;
+    const errEl    = document.getElementById('signinError');
+
+    // Mock: accept demo credentials or any @test.com
+    const user = MOCK_USERS.find(u => u.email === email && u.password === password)
+               || (email && password.length >= 6 ? { email, role: 'teacher', name: email.split('@')[0] } : null);
+
+    if (!user) { errEl.classList.add('show'); return; }
+    errEl.classList.remove('show');
+
+    // Save session
+    localStorage.setItem('synapse_user', JSON.stringify(user));
+    redirect(user.role);
+  }
+
+  function handleSignup() {
+    const name     = document.getElementById('suName').value.trim();
+    const email    = document.getElementById('suEmail').value.trim();
+    const password = document.getElementById('suPassword').value;
+    const role     = document.querySelector('input[name=role]:checked').value;
+    const errEl    = document.getElementById('signupError');
+
+    if (!name || !email || password.length < 8) { errEl.classList.add('show'); return; }
+    errEl.classList.remove('show');
+
+    const user = { email, role, name };
+    localStorage.setItem('synapse_user', JSON.stringify(user));
+    redirect(role);
+  }
+
+  function redirect(role) {
+    if (role === 'teacher') {
+      window.location.href = 'classrooms.html';
+    } else {
+      // Students see a simple "here's how to set up your extension" page
+      window.location.href = 'student.html';
+    }
+  }
+
+  // Auto-redirect if already logged in
+  const existing = localStorage.getItem('synapse_user');
+  if (existing) {
+    const u = JSON.parse(existing);
+    redirect(u.role);
+  }
+</script>
+</body>
+</html>

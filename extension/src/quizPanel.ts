@@ -32,9 +32,13 @@ export class QuizPanel {
   }
 
   async loadQuiz(errorType: string) {
+    // Guard: coerce to string in case the command arg is passed as an object
+    const safeType = (typeof errorType === 'string' && errorType.length > 0)
+      ? errorType
+      : 'none_handling';
     const api = new SynapseApi();
-    const questions = await api.getQuiz(errorType);
-    this._panel.webview.html = this.getHtml(questions, errorType);
+    const questions = await api.getQuiz(safeType);
+    this._panel.webview.html = this.getHtml(questions, safeType);
 
     this._panel.webview.onDidReceiveMessage(msg => {
       if (msg.command === 'quizComplete') {

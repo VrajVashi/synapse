@@ -1,0 +1,17 @@
+# Node
+node_modules/
+npm-debug.log*
+
+# VS Code Extension compiled output
+extension/out/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Env / secrets
+.env
+.env.local
+
+# AWS SAM build artifacts
+.aws-sam/

@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Synapse — Instructor Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+  <!-- ── Sidebar ─────────────────────────────────────────────────────── -->
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-mark">S</div>
+      <span class="logo-name">Synapse</span>
+    </div>
+
+    <nav class="sidebar-nav">
+      <a href="#" class="nav-item active" data-view="overview">
+        <span class="nav-icon">◈</span> Overview
+      </a>
+      <a href="#" class="nav-item" data-view="heatmap">
+        <span class="nav-icon">⬡</span> Struggle Heatmap
+      </a>
+      <a href="#" class="nav-item" data-view="students">
+        <span class="nav-icon">◉</span> At-Risk Students
+      </a>
+      <a href="#" class="nav-item" data-view="mastery">
+        <span class="nav-icon">◈</span> Mastery Tracking
+      </a>
+      <a href="#" class="nav-item" data-view="curriculum">
+        <span class="nav-icon">▣</span> Curriculum Insights
+      </a>
+    </nav>
+
+    <div class="sidebar-footer">
+      <div class="cohort-badge">
+        <div class="cohort-dot"></div>
+        <span id="cohortName">Loading...</span>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ── Main ───────────────────────────────────────────────────────── -->
+  <main class="main">
+
+    <!-- Topbar -->
+    <header class="topbar">
+      <div class="topbar-left">
+        <h1 class="page-title" id="pageTitle">Overview</h1>
+        <div class="page-sub" id="pageSub">Loading cohort data...</div>
+      </div>
+      <div class="topbar-right">
+        <div class="topbar-stat">
+          <span class="ts-label">Active today</span>
+          <span class="ts-value" id="activeToday">—</span>
+        </div>
+        <div class="topbar-stat">
+          <span class="ts-label">Total students</span>
+          <span class="ts-value" id="totalStudents">—</span>
+        </div>
+        <button class="btn-export">Export Report</button>
+      </div>
+    </header>
+
+    <!-- ── Views ────────────────────────────────────────────────────── -->
+
+    <!-- Overview view -->
+    <section class="view active" id="view-overview">
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-label">Total Debug Sessions</div>
+          <div class="stat-value" id="ov-sessions">—</div>
+          <div class="stat-delta positive" id="ov-delta">+12% vs last week</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Avg Fix Time</div>
+          <div class="stat-value"><span id="ov-avgfix">—</span><span class="stat-unit">min</span></div>
+          <div class="stat-delta">cohort average</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Quiz Completion Rate</div>
+          <div class="stat-value progress-val"><span id="ov-quiz">—</span><span class="stat-unit">%</span></div>
+          <div class="progress-bar-sm"><div class="pb-fill" id="ov-quizbar"></div></div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">At-Risk Students</div>
+          <div class="stat-value warn" id="ov-atrisk">—</div>
+          <div class="stat-delta warn">require intervention</div>
+        </div>
+      </div>
+
+      <div class="two-col">
+        <!-- Top struggles -->
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">Top Struggles This Week</div>
+            <a href="#" class="card-link" data-view="heatmap">See all →</a>
+          </div>
+          <div class="heatmap-list" id="ov-heatmap"></div>
+        </div>
+
+        <!-- At risk preview -->
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">Students Needing Attention</div>
+            <a href="#" class="card-link" data-view="students">See all →</a>
+          </div>
+          <div class="risk-list" id="ov-risk"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Heatmap view -->
+    <section class="view" id="view-heatmap">
+      <div class="card full-card">
+        <div class="card-header">
+          <div class="card-title">Struggle Heatmap — Last 7 Days</div>
+          <div class="card-sub">Ranked by number of debugging attempts across cohort</div>
+        </div>
+        <div class="heatmap-full" id="hm-full"></div>
+      </div>
+    </section>
+
+    <!-- At-risk students view -->
+    <section class="view" id="view-students">
+      <div class="card full-card">
+        <div class="card-header">
+          <div class="card-title">At-Risk Students</div>
+          <div class="card-sub">Flagged based on attempt count, quiz completion, and time-to-fix patterns</div>
+        </div>
+        <table class="students-table">
+          <thead>
+            <tr>
+              <th>Student</th>
+              <th>Error Pattern</th>
+              <th>Attempts</th>
+              <th>vs Class Avg</th>
+              <th>Last Active</th>
+              <th>Recommended Action</th>
+            </tr>
+          </thead>
+          <tbody id="students-body"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Mastery view -->
+    <section class="view" id="view-mastery">
+      <div class="card full-card">
+        <div class="card-header">
+          <div class="card-title">Concept Mastery Tracking</div>
+          <div class="card-sub">Based on quiz completion rates and time-to-fix improvements</div>
+        </div>
+        <div class="mastery-list" id="mastery-list"></div>
+      </div>
+    </section>
+
+    <!-- Curriculum insights view -->
+    <section class="view" id="view-curriculum">
+      <div class="card full-card">
+        <div class="card-header">
+          <div class="card-title">Curriculum Optimization Insights</div>
+          <div class="card-sub">AI-generated recommendations based on real student struggle timing</div>
+        </div>
+        <div class="curriculum-list" id="curriculum-list"></div>
+      </div>
+    </section>
+
+  </main>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>

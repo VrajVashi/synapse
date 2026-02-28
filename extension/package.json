@@ -14,7 +14,8 @@
   ],
   "icon": "media/icon.png",
   "activationEvents": [
-    "onLanguage:python"
+    "onLanguage:python",
+    "onView:synapse.sidebarView"
   ],
   "main": "./out/extension.js",
   "contributes": {
@@ -37,6 +38,10 @@
       {
         "command": "synapse.registerStudent",
         "title": "Synapse: Register as Student"
+      },
+      {
+        "command": "synapse.showMenu",
+        "title": "Synapse: Open Menu"
       }
     ],
     "configuration": {
@@ -81,8 +86,8 @@
     "views": {
       "synapse-sidebar": [
         {
-          "id": "synapse.dnaView",
-          "name": "Debugging DNA",
+          "id": "synapse.sidebarView",
+          "name": "Synapse",
           "type": "webview"
         }
       ]

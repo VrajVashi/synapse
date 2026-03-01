@@ -1,21 +1,26 @@
 const { DynamoDBClient, PutItemCommand, UpdateItemCommand } = require('@aws-sdk/client-dynamodb');
+const { S3Client, PutObjectCommand } = require('@aws-sdk/client-s3');
 const { marshall } = require('@aws-sdk/util-dynamodb');
 
 const ddb = new DynamoDBClient({});
+const s3 = new S3Client({});
 const SESSIONS_TABLE = process.env.SESSIONS_TABLE;
 const USERS_TABLE = process.env.USERS_TABLE;
+const SNAPSHOTS_BUCKET = process.env.SNAPSHOTS_BUCKET;
 
 /**
  * POST /sessions
  *
  * Receives a debugging session from the VS Code extension and:
- * 1. Writes the full session to DebuggingSessions table
- * 2. Upserts the student's UserProfile (increments total_sessions)
+ * 1. Uploads code snapshot to S3 (for debugging replay)
+ * 2. Writes the full session to DebuggingSessions table
+ * 3. Upserts the student's UserProfile (increments total_sessions)
  *
  * Expected body (camelCase from extension):
  * {
  *   sessionId, studentId, cohortId, filePath, errorType,
- *   startTime, attempts[], resolved, totalDurationSeconds
+ *   startTime, attempts[], resolved, totalDurationSeconds,
+ *   codeSnapshot?: string   // <-- NEW: full file contents for replay
  * }
  */
 exports.handler = async (event) => {
@@ -48,8 +53,26 @@ exports.handler = async (event) => {
         }
 
         const now = Date.now();
+        let snapshotKey = null;
 
-        // ── 1. Write session to DebuggingSessions table ──
+        // ── 1. Upload code snapshot to S3 (if provided) ──
+        if (body.codeSnapshot && SNAPSHOTS_BUCKET) {
+            snapshotKey = `${studentId}/${sessionId}.py`;
+            await s3.send(new PutObjectCommand({
+                Bucket: SNAPSHOTS_BUCKET,
+                Key: snapshotKey,
+                Body: body.codeSnapshot,
+                ContentType: 'text/x-python',
+                Metadata: {
+                    'student-id': studentId,
+                    'session-id': sessionId,
+                    'error-type': errorType,
+                    'file-path': body.filePath || '',
+                },
+            }));
+        }
+
+        // ── 2. Write session to DebuggingSessions table ──
         const sessionItem = {
             session_id: sessionId,
             timestamp: now,
@@ -62,6 +85,7 @@ exports.handler = async (event) => {
             resolved: body.resolved || false,
             total_duration_seconds: body.totalDurationSeconds || 0,
             created_at: new Date().toISOString(),
+            snapshot_key: snapshotKey, // S3 key for replay
         };
 
         await ddb.send(new PutItemCommand({
@@ -69,7 +93,7 @@ exports.handler = async (event) => {
             Item: marshall(sessionItem, { removeUndefinedValues: true }),
         }));
 
-        // ── 2. Upsert UserProfile (increment total_sessions) ──
+        // ── 3. Upsert UserProfile (increment total_sessions) ──
         await ddb.send(new UpdateItemCommand({
             TableName: USERS_TABLE,
             Key: marshall({ user_id: studentId }),
@@ -85,7 +109,11 @@ exports.handler = async (event) => {
         return {
             statusCode: 200,
             headers,
-            body: JSON.stringify({ message: 'Session recorded', sessionId }),
+            body: JSON.stringify({
+                message: 'Session recorded',
+                sessionId,
+                snapshotKey, // Return S3 key so extension knows it was saved
+            }),
         };
 
     } catch (err) {

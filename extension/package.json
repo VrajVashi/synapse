@@ -57,7 +57,7 @@
         },
         "synapse.apiEndpoint": {
           "type": "string",
-          "default": "https://your-api-id.execute-api.ap-south-1.amazonaws.com/prod",
+          "default": "https://hcx07zkbfd.execute-api.ap-south-1.amazonaws.com/prod",
           "description": "Synapse API Gateway endpoint"
         },
         "synapse.enablePredictiveWarnings": {

@@ -25,7 +25,7 @@ export function activate(context: vscode.ExtensionContext) {
     diagnosticCollection = vscode.languages.createDiagnosticCollection('synapse');
     api = new SynapseApi();
     sessionRecorder = new SessionRecorder(context, api);
-    analyzer = new SynapseAnalyzer(diagnosticCollection, sessionRecorder);
+    analyzer = new SynapseAnalyzer(diagnosticCollection, sessionRecorder, api);
 
     // Sidebar panel (Grammarly-style)
     sidebarProvider = new SynapseViewProvider(context.extensionUri, context);

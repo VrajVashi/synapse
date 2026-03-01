@@ -80,6 +80,31 @@ export class SynapseApi {
         await this.post('/quiz/results', { studentId, errorType, score, total, timestamp: new Date().toISOString() });
     }
 
+    async analyzeWithAI(request: {
+        code: string;
+        errorType: string;
+        errorMessage: string;
+        line: number;
+        filePath: string;
+        studentId?: string;
+        cohortContext?: { crashRate: number; avgFixMinutes: number };
+    }): Promise<AIAnalysisResult | null> {
+        const base = this.getBase();
+        if (!base) { return null; }
+
+        try {
+            const response = await fetch(`${base}/analyze`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(request),
+            });
+            if (!response.ok) { return null; }
+            return await response.json() as AIAnalysisResult;
+        } catch {
+            return null;
+        }
+    }
+
     private async post(path: string, body: unknown): Promise<void> {
         const base = this.getBase();
         if (!base) { return; }
@@ -123,6 +148,14 @@ export interface QuizQuestion {
     options: string[];
     correctIndex: number;
     explanation: string;
+}
+
+export interface AIAnalysisResult {
+    explanation: string;
+    fixSuggestion: string;
+    conceptsToReview: string[];
+    confidence: number;
+    modelId: string;
 }
 
 // ─── Hardcoded Quiz Questions (MVP — zero hallucination risk) ─────────────

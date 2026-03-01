@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import { SessionRecorder } from './sessionRecorder';
+import { SynapseApi } from './api';
 
 /**
  * Python error patterns Synapse detects (Tier 1 + Tier 2).
@@ -30,10 +31,13 @@ const COHORT_DATA: Record<string, { crashRate: number; avgFixMinutes: number; co
 export class SynapseAnalyzer {
     private debounceTimer: NodeJS.Timeout | undefined;
     private readonly debounceMs = 800;
+    private aiCooldowns = new Map<string, number>(); // per-file cooldown for Bedrock calls
+    private readonly aiCooldownMs = 10000; // 10s between AI calls per file
 
     constructor(
         private diagnosticCollection: vscode.DiagnosticCollection,
-        private sessionRecorder: SessionRecorder
+        private sessionRecorder: SessionRecorder,
+        private api?: SynapseApi
     ) { }
 
     onDocumentChanged(doc: vscode.TextDocument) {
@@ -70,13 +74,74 @@ export class SynapseAnalyzer {
             issues.push(...listIssues);
         });
 
-        // Convert to VS Code diagnostics
+        // Convert to VS Code diagnostics (Tier 1+2 — local, instant)
         const diagnostics = issues.map(issue => this.issueToDiagnostic(doc, issue));
         this.diagnosticCollection.set(doc.uri, diagnostics);
 
         // Record detection events
         if (issues.length > 0) {
             this.sessionRecorder.onIssuesDetected(doc.uri.fsPath, issues);
+
+            // Tier 3 — AI analysis via Bedrock (async, non-blocking)
+            this.requestAIAnalysis(doc, issues, text);
+        }
+    }
+
+    /**
+     * Tier 3: Call AWS Bedrock for AI-powered analysis.
+     * Only fires for the first issue in the file, with a per-file cooldown.
+     */
+    private async requestAIAnalysis(doc: vscode.TextDocument, issues: SynapseIssue[], code: string) {
+        if (!this.api) { return; }
+
+        const config = vscode.workspace.getConfiguration('synapse');
+        if (!config.get<boolean>('enablePredictiveWarnings', true)) { return; }
+
+        const filePath = doc.uri.fsPath;
+        const now = Date.now();
+        const lastCall = this.aiCooldowns.get(filePath) || 0;
+        if (now - lastCall < this.aiCooldownMs) { return; }
+        this.aiCooldowns.set(filePath, now);
+
+        // Pick the highest-severity issue for AI analysis
+        const topIssue = issues.sort((a, b) => b.crashProbability - a.crashProbability)[0];
+        const cohort = COHORT_DATA[topIssue.errorType];
+
+        try {
+            const studentId = config.get<string>('studentId') || 'anonymous';
+            const result = await this.api.analyzeWithAI({
+                code: code.substring(0, 3000),
+                errorType: topIssue.errorType,
+                errorMessage: topIssue.message,
+                line: topIssue.line,
+                filePath: doc.fileName,
+                studentId,
+                cohortContext: cohort ? { crashRate: cohort.crashRate, avgFixMinutes: cohort.avgFixMinutes } : undefined,
+            });
+
+            if (result && result.explanation) {
+                // Enrich the diagnostic with AI analysis
+                const existingDiags = this.diagnosticCollection.get(doc.uri) || [];
+                const aiDiagnostic = new vscode.Diagnostic(
+                    new vscode.Range(
+                        new vscode.Position(topIssue.line, topIssue.col),
+                        new vscode.Position(topIssue.line, Math.min(topIssue.endCol, doc.lineAt(topIssue.line).text.length))
+                    ),
+                    `✨ SYNAPSE AI [${result.confidence}% confidence]: ${result.explanation}` +
+                    (result.fixSuggestion ? `\n\n💡 Fix: ${result.fixSuggestion}` : '') +
+                    (result.conceptsToReview?.length ? `\n\n📚 Review: ${result.conceptsToReview.join(', ')}` : ''),
+                    vscode.DiagnosticSeverity.Information
+                );
+                aiDiagnostic.source = 'Synapse AI (Bedrock)';
+                aiDiagnostic.code = {
+                    value: topIssue.errorType,
+                    target: vscode.Uri.parse(`command:synapse.showQuiz?${encodeURIComponent(JSON.stringify([topIssue.errorType]))}`)
+                };
+
+                this.diagnosticCollection.set(doc.uri, [...existingDiags, aiDiagnostic]);
+            }
+        } catch {
+            // AI analysis failed — Tier 1+2 diagnostics still show
         }
     }
 

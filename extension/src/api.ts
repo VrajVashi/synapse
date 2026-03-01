@@ -13,7 +13,10 @@ export class SynapseApi {
         const base = this.getBase();
         if (!base) { return; } // No API configured yet
 
-        await this.post('/sessions', session);
+        // Inject cohortId from VS Code settings so the Lambda can write it to DynamoDB
+        const config = vscode.workspace.getConfiguration('synapse');
+        const cohortId = config.get<string>('cohortId') || '';
+        await this.post('/sessions', { ...session, cohortId });
     }
 
     async getSessions(studentId: string): Promise<DebugSession[]> {

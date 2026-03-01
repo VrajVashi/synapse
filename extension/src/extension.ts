@@ -28,7 +28,14 @@ export function activate(context: vscode.ExtensionContext) {
     analyzer = new SynapseAnalyzer(diagnosticCollection, sessionRecorder);
 
     // Sidebar panel (Grammarly-style)
-    sidebarProvider = new SynapseViewProvider(context.extensionUri);
+    sidebarProvider = new SynapseViewProvider(context.extensionUri, context);
+
+    // Gate session tracking based on classroom membership
+    sidebarProvider.onClassroomChanged(() => {
+        sessionRecorder.setEnabled(sidebarProvider.isInClassroom());
+    });
+    // Set initial tracking state
+    sessionRecorder.setEnabled(sidebarProvider.isInClassroom());
     context.subscriptions.push(
         vscode.window.registerWebviewViewProvider(
             SynapseViewProvider.viewType,
@@ -97,7 +104,9 @@ export function activate(context: vscode.ExtensionContext) {
         vscode.workspace.onDidSaveTextDocument(doc => {
             if (doc.languageId === 'python') {
                 analyzer.analyzeDocument(doc);
-                sessionRecorder.onFileSaved(doc, getStudentId(context));
+                if (sidebarProvider.isInClassroom()) {
+                    sessionRecorder.onFileSaved(doc, getStudentId(context));
+                }
                 updateStatusBar(diagnosticCollection, doc.uri);
             }
         }),

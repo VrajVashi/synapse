@@ -28,6 +28,7 @@ export class SessionRecorder {
     private lastSavedContent = new Map<string, string>(); // key: filePath
     private flushTimer: NodeJS.Timeout | undefined;
     private readonly flushIntervalMs = 30000; // flush to API every 30s
+    private enabled = false;
 
     constructor(
         private context: vscode.ExtensionContext,
@@ -45,7 +46,13 @@ export class SessionRecorder {
         this.flushTimer = setInterval(() => this.flush(), this.flushIntervalMs);
     }
 
+    /** Enable/disable session recording (gated on classroom membership) */
+    public setEnabled(value: boolean) {
+        this.enabled = value;
+    }
+
     onIssuesDetected(filePath: string, issues: SynapseIssue[]) {
+        if (!this.enabled) { return; }
         issues.forEach(issue => {
             const key = `${filePath}::${issue.errorType}`;
             if (!this.activeSessions.has(key)) {
@@ -67,6 +74,7 @@ export class SessionRecorder {
     }
 
     onFileSaved(doc: vscode.TextDocument, studentId: string) {
+        if (!this.enabled) { return; }
         const filePath = doc.uri.fsPath;
         const currentContent = doc.getText();
         const prevContent = this.lastSavedContent.get(filePath) || '';

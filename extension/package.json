@@ -12,10 +12,8 @@
     "Education",
     "Other"
   ],
-  "icon": "media/icon.png",
   "activationEvents": [
-    "onLanguage:python",
-    "onView:synapse.sidebarView"
+    "onLanguage:python"
   ],
   "main": "./out/extension.js",
   "contributes": {
@@ -88,7 +86,8 @@
         {
           "id": "synapse.sidebarView",
           "name": "Synapse",
-          "type": "webview"
+          "type": "webview",
+          "icon": "media/synapse-icon.svg"
         }
       ]
     },

@@ -1,0 +1,185 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  Synapse — Debugging Intelligence Platform
+  DynamoDB tables, Lambda functions, and API Gateway for session tracking.
+
+Globals:
+  Function:
+    Runtime: nodejs20.x
+    Timeout: 15
+    MemorySize: 256
+    Environment:
+      Variables:
+        SESSIONS_TABLE: !Ref DebuggingSessionsTable
+        USERS_TABLE: !Ref UserProfilesTable
+        COHORT_TABLE: !Ref CohortPatternsTable
+
+Resources:
+
+  # ============================================================
+  # API Gateway
+  # ============================================================
+  SynapseApi:
+    Type: AWS::Serverless::Api
+    Properties:
+      Name: synapse-api
+      StageName: prod
+      Cors:
+        AllowMethods: "'GET,POST,OPTIONS'"
+        AllowHeaders: "'Content-Type,Authorization'"
+        AllowOrigin: "'*'"
+
+  # ============================================================
+  # Lambda: sessionWriter
+  # POST /sessions — writes debugging sessions to DynamoDB
+  # ============================================================
+  SessionWriterFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: synapse-session-writer
+      Handler: index.handler
+      CodeUri: functions/sessionWriter/
+      Description: Receives debugging session data and writes to DynamoDB
+      Events:
+        PostSession:
+          Type: Api
+          Properties:
+            RestApiId: !Ref SynapseApi
+            Path: /sessions
+            Method: POST
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action:
+                - dynamodb:PutItem
+              Resource: !GetAtt DebuggingSessionsTable.Arn
+            - Effect: Allow
+              Action:
+                - dynamodb:UpdateItem
+              Resource: !GetAtt UserProfilesTable.Arn
+
+  # ============================================================
+  # DebuggingSessions Table
+  # PK: session_id | SK: timestamp
+  # GSI1: user_id + timestamp
+  # GSI2: cohort_id + error_type
+  # ============================================================
+  DebuggingSessionsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: synapse-debugging-sessions
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: session_id
+          AttributeType: S
+        - AttributeName: timestamp
+          AttributeType: N
+        - AttributeName: user_id
+          AttributeType: S
+        - AttributeName: cohort_id
+          AttributeType: S
+        - AttributeName: error_type
+          AttributeType: S
+      KeySchema:
+        - AttributeName: session_id
+          KeyType: HASH
+        - AttributeName: timestamp
+          KeyType: RANGE
+      GlobalSecondaryIndexes:
+        - IndexName: user_id-timestamp-index
+          KeySchema:
+            - AttributeName: user_id
+              KeyType: HASH
+            - AttributeName: timestamp
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+        - IndexName: cohort_id-error_type-index
+          KeySchema:
+            - AttributeName: cohort_id
+              KeyType: HASH
+            - AttributeName: error_type
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+      Tags:
+        - Key: Project
+          Value: Synapse
+        - Key: Environment
+          Value: dev
+
+  # ============================================================
+  # UserProfiles Table
+  # PK: user_id
+  # ============================================================
+  UserProfilesTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: synapse-user-profiles
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: user_id
+          AttributeType: S
+      KeySchema:
+        - AttributeName: user_id
+          KeyType: HASH
+      Tags:
+        - Key: Project
+          Value: Synapse
+        - Key: Environment
+          Value: dev
+
+  # ============================================================
+  # CohortPatterns Table
+  # PK: cohort_id | SK: error_type
+  # ============================================================
+  CohortPatternsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: synapse-cohort-patterns
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: cohort_id
+          AttributeType: S
+        - AttributeName: error_type
+          AttributeType: S
+      KeySchema:
+        - AttributeName: cohort_id
+          KeyType: HASH
+        - AttributeName: error_type
+          KeyType: RANGE
+      Tags:
+        - Key: Project
+          Value: Synapse
+        - Key: Environment
+          Value: dev
+
+Outputs:
+  ApiUrl:
+    Description: API Gateway endpoint URL
+    Value: !Sub "https://${SynapseApi}.execute-api.${AWS::Region}.amazonaws.com/prod"
+
+  DebuggingSessionsTableName:
+    Description: DynamoDB table for debugging sessions
+    Value: !Ref DebuggingSessionsTable
+
+  DebuggingSessionsTableArn:
+    Description: ARN of the debugging sessions table
+    Value: !GetAtt DebuggingSessionsTable.Arn
+
+  UserProfilesTableName:
+    Description: DynamoDB table for user profiles
+    Value: !Ref UserProfilesTable
+
+  UserProfilesTableArn:
+    Description: ARN of the user profiles table
+    Value: !GetAtt UserProfilesTable.Arn
+
+  CohortPatternsTableName:
+    Description: DynamoDB table for cohort patterns
+    Value: !Ref CohortPatternsTable
+
+  CohortPatternsTableArn:
+    Description: ARN of the cohort patterns table
+    Value: !GetAtt CohortPatternsTable.Arn

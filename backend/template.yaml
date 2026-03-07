@@ -224,6 +224,199 @@ Resources:
                 - "arn:aws:bedrock:*::foundation-model/anthropic.claude-haiku-4-5-20251001-v1:0"
 
   # ============================================================
+  # Lambda: cohortInfo
+  # GET /cohort/info — returns basic cohort metadata
+  # ============================================================
+  CohortInfoFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: synapse-cohort-info
+      Handler: index.handler
+      CodeUri: functions/cohortInfo/
+      Description: Returns basic cohort metadata (name, week, student count)
+      Events:
+        GetCohortInfo:
+          Type: Api
+          Properties:
+            RestApiId: !Ref SynapseApi
+            Path: /cohort/info
+            Method: GET
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action:
+                - dynamodb:Scan
+              Resource: !GetAtt UserProfilesTable.Arn
+
+  # ============================================================
+  # Lambda: cohortHeatmap
+  # GET /cohort/heatmap — returns struggle heatmap data
+  # ============================================================
+  CohortHeatmapFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: synapse-cohort-heatmap
+      Handler: index.handler
+      CodeUri: functions/cohortHeatmap/
+      Description: Returns error-type attempt counts and rates for the cohort
+      Events:
+        GetCohortHeatmap:
+          Type: Api
+          Properties:
+            RestApiId: !Ref SynapseApi
+            Path: /cohort/heatmap
+            Method: GET
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action:
+                - dynamodb:Scan
+              Resource:
+                - !GetAtt DebuggingSessionsTable.Arn
+                - !Sub "${DebuggingSessionsTable.Arn}/index/*"
+
+  # ============================================================
+  # Lambda: cohortAtRisk
+  # GET /cohort/at-risk — returns at-risk student list
+  # ============================================================
+  CohortAtRiskFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: synapse-cohort-at-risk
+      Handler: index.handler
+      CodeUri: functions/cohortAtRisk/
+      Description: Returns students whose attempt count is far above the class average
+      Events:
+        GetCohortAtRisk:
+          Type: Api
+          Properties:
+            RestApiId: !Ref SynapseApi
+            Path: /cohort/at-risk
+            Method: GET
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action:
+                - dynamodb:Scan
+              Resource:
+                - !GetAtt DebuggingSessionsTable.Arn
+                - !Sub "${DebuggingSessionsTable.Arn}/index/*"
+
+  # ============================================================
+  # Lambda: cohortMastery
+  # GET /cohort/mastery — returns concept mastery percentages
+  # ============================================================
+  CohortMasteryFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: synapse-cohort-mastery
+      Handler: index.handler
+      CodeUri: functions/cohortMastery/
+      Description: Returns concept mastery levels computed from session resolution data
+      Events:
+        GetCohortMastery:
+          Type: Api
+          Properties:
+            RestApiId: !Ref SynapseApi
+            Path: /cohort/mastery
+            Method: GET
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action:
+                - dynamodb:Scan
+              Resource:
+                - !GetAtt DebuggingSessionsTable.Arn
+                - !GetAtt UserProfilesTable.Arn
+
+  # ============================================================
+  # Lambda: cohortCurriculum
+  # GET /cohort/curriculum — returns AI curriculum insights
+  # ============================================================
+  CohortCurriculumFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: synapse-cohort-curriculum
+      Handler: index.handler
+      CodeUri: functions/cohortCurriculum/
+      Description: Returns curriculum gap insights and recommendations for the cohort
+      Events:
+        GetCohortCurriculum:
+          Type: Api
+          Properties:
+            RestApiId: !Ref SynapseApi
+            Path: /cohort/curriculum
+            Method: GET
+
+  # ============================================================
+  # Lambda: cohortStats
+  # GET /cohort/stats — returns weekly overview stats
+  # ============================================================
+  CohortStatsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: synapse-cohort-stats
+      Handler: index.handler
+      CodeUri: functions/cohortStats/
+      Description: Returns high-level weekly stats for the cohort overview cards
+      Events:
+        GetCohortStats:
+          Type: Api
+          Properties:
+            RestApiId: !Ref SynapseApi
+            Path: /cohort/stats
+            Method: GET
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action:
+                - dynamodb:Scan
+              Resource:
+                - !GetAtt DebuggingSessionsTable.Arn
+                - !Sub "${DebuggingSessionsTable.Arn}/index/*"
+
+  # ============================================================
+  # Lambda: cohortHomework
+  # GET  /cohort/homework          — list assignments
+  # POST /cohort/homework          — create assignment
+  # POST /cohort/homework/{id}/close — close assignment
+  # ============================================================
+  CohortHomeworkFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: synapse-cohort-homework
+      Handler: index.handler
+      CodeUri: functions/cohortHomework/
+      Description: Manages homework assignments for the cohort
+      Events:
+        GetHomework:
+          Type: Api
+          Properties:
+            RestApiId: !Ref SynapseApi
+            Path: /cohort/homework
+            Method: GET
+        PostHomework:
+          Type: Api
+          Properties:
+            RestApiId: !Ref SynapseApi
+            Path: /cohort/homework
+            Method: POST
+        CloseHomework:
+          Type: Api
+          Properties:
+            RestApiId: !Ref SynapseApi
+            Path: /cohort/homework/{id}/close
+            Method: POST
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action:
+                - dynamodb:Scan
+                - dynamodb:PutItem
+                - dynamodb:UpdateItem
+              Resource: !GetAtt DebuggingSessionsTable.Arn
+
+  # ============================================================
   # S3: Code Snapshots Bucket
   # Stores code snapshots for debugging replay
   # ============================================================

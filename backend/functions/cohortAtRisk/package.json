@@ -1,0 +1,10 @@
+{
+    "name": "cohort-at-risk",
+    "version": "1.0.0",
+    "description": "Returns at-risk students for the cohort",
+    "main": "index.js",
+    "dependencies": {
+        "@aws-sdk/client-dynamodb": "^3.0.0",
+        "@aws-sdk/util-dynamodb": "^3.0.0"
+    }
+}

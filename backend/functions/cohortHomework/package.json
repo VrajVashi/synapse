@@ -1,0 +1,10 @@
+{
+    "name": "cohort-homework",
+    "version": "1.0.0",
+    "description": "Manages homework assignments for the cohort",
+    "main": "index.js",
+    "dependencies": {
+        "@aws-sdk/client-dynamodb": "^3.0.0",
+        "@aws-sdk/util-dynamodb": "^3.0.0"
+    }
+}

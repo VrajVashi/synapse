@@ -1,0 +1,120 @@
+{
+  "name": "synapse",
+  "displayName": "Synapse — Debugging Intelligence",
+  "description": "The first debugging intelligence platform for bootcamps. Learn from your patterns, fix bugs faster.",
+  "version": "0.1.0",
+  "publisher": "team-determinist",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Linters",
+    "Education",
+    "Other"
+  ],
+  "activationEvents": [
+    "onLanguage:python"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "synapse.showReplay",
+        "title": "Synapse: Show Debugging Replay",
+        "icon": "$(history)"
+      },
+      {
+        "command": "synapse.showQuiz",
+        "title": "Synapse: Take Quiz",
+        "icon": "$(mortar-board)"
+      },
+      {
+        "command": "synapse.showDNA",
+        "title": "Synapse: View Debugging DNA Profile",
+        "icon": "$(graph)"
+      },
+      {
+        "command": "synapse.registerStudent",
+        "title": "Synapse: Register as Student"
+      },
+      {
+        "command": "synapse.showMenu",
+        "title": "Synapse: Open Menu"
+      }
+    ],
+    "configuration": {
+      "title": "Synapse",
+      "properties": {
+        "synapse.studentId": {
+          "type": "string",
+          "default": "",
+          "description": "Your Synapse student ID (set by your bootcamp)"
+        },
+        "synapse.cohortId": {
+          "type": "string",
+          "default": "",
+          "description": "Your bootcamp cohort ID"
+        },
+        "synapse.apiEndpoint": {
+          "type": "string",
+          "default": "https://hcx07zkbfd.execute-api.ap-south-1.amazonaws.com/prod",
+          "description": "Synapse API Gateway endpoint"
+        },
+        "synapse.enablePredictiveWarnings": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show AI-powered predictive bug warnings"
+        },
+        "synapse.enableReplay": {
+          "type": "boolean",
+          "default": true,
+          "description": "Record debugging sessions for replay"
+        }
+      }
+    },
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "synapse-sidebar",
+          "title": "Synapse",
+          "icon": "media/synapse-icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "synapse-sidebar": [
+        {
+          "id": "synapse.sidebarView",
+          "name": "Synapse",
+          "type": "webview",
+          "icon": "media/synapse-icon.svg"
+        }
+      ]
+    },
+    "menus": {
+      "editor/context": [
+        {
+          "command": "synapse.showReplay",
+          "group": "synapse",
+          "when": "editorLangId == python"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "pretest": "npm run compile",
+    "test": "node ./out/test/runTest.js"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@types/vscode": "^1.85.0",
+    "@types/uuid": "^9.0.0",
+    "typescript": "^5.3.0"
+  },
+  "dependencies": {
+    "uuid": "^9.0.0"
+  }
+}

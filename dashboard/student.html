@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Synapse — Student Setup</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap"
+        rel="stylesheet" />
+    <style>
+        *,
+        *::before,
+        *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background: #080808;
+            color: #e5e5e5;
+            font-family: 'Inter', system-ui, sans-serif;
+            min-height: 100vh;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background-image: linear-gradient(rgba(249, 115, 22, 0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(249, 115, 22, 0.03) 1px, transparent 1px);
+            background-size: 40px 40px;
+            pointer-events: none;
+        }
+
+        .topbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 16px 28px;
+            border-bottom: 1px solid #1e1e1e;
+            background: #111;
+        }
+
+        .logo-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .logo-mark {
+            width: 30px;
+            height: 30px;
+            border-radius: 8px;
+            background: #f97316;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            font-weight: 900;
+            color: #000;
+        }
+
+        .logo-name {
+            font-size: 16px;
+            font-weight: 800;
+            color: #fff;
+        }
+
+        .logo-name span {
+            color: #f97316;
+        }
+
+        .btn-logout {
+            background: transparent;
+            border: 1px solid #1e1e1e;
+            color: #444;
+            padding: 7px 14px;
+            border-radius: 8px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            font-family: inherit;
+        }
+
+        .btn-logout:hover {
+            border-color: #444;
+            color: #888;
+        }
+
+        .main {
+            max-width: 680px;
+            margin: 0 auto;
+            padding: 48px 24px;
+        }
+
+        .greeting {
+            font-size: 28px;
+            font-weight: 900;
+            color: #fff;
+            margin-bottom: 6px;
+        }
+
+        .greeting span {
+            color: #f97316;
+        }
+
+        .sub {
+            font-size: 14px;
+            color: #444;
+            margin-bottom: 40px;
+        }
+
+        .steps {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .step-card {
+            background: #111;
+            border: 1px solid #1e1e1e;
+            border-radius: 14px;
+            padding: 20px 22px;
+            display: flex;
+            gap: 18px;
+            align-items: flex-start;
+        }
+
+        .step-num {
+            width: 34px;
+            height: 34px;
+            border-radius: 9px;
+            background: #f97316;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 15px;
+            font-weight: 900;
+            color: #000;
+            flex-shrink: 0;
+        }
+
+        .step-body {}
+
+        .step-title {
+            font-size: 14px;
+            font-weight: 700;
+            color: #fff;
+            margin-bottom: 4px;
+        }
+
+        .step-sub {
+            font-size: 12px;
+            color: #555;
+            line-height: 1.6;
+        }
+
+        .step-code {
+            background: #0d0d0d;
+            border: 1px solid #1e1e1e;
+            border-radius: 8px;
+            padding: 10px 14px;
+            font-family: monospace;
+            font-size: 13px;
+            color: #f97316;
+            margin-top: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+        }
+
+        .copy-btn {
+            background: #f9731620;
+            border: 1px solid #f9731630;
+            color: #f97316;
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 700;
+            cursor: pointer;
+            font-family: inherit;
+            flex-shrink: 0;
+        }
+
+        .copy-btn:hover {
+            background: #f9731635;
+        }
+
+        .step-card.highlight {
+            border-color: #f9731630;
+            background: #f9731608;
+        }
+
+        .classroom-id-input {
+            background: #0d0d0d;
+            border: 1px solid #1e1e1e;
+            border-radius: 9px;
+            padding: 11px 14px;
+            font-size: 14px;
+            color: #e5e5e5;
+            font-family: monospace;
+            outline: none;
+            width: 100%;
+            margin-top: 10px;
+            transition: border-color 0.15s;
+        }
+
+        .classroom-id-input:focus {
+            border-color: #f97316;
+        }
+
+        .classroom-id-input::placeholder {
+            color: #333;
+            font-family: inherit;
+            font-size: 12px;
+        }
+
+        .btn-save-id {
+            background: #f97316;
+            color: #000;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 800;
+            cursor: pointer;
+            font-family: inherit;
+            margin-top: 10px;
+        }
+
+        .saved-badge {
+            display: none;
+            background: #22c55e20;
+            border: 1px solid #22c55e30;
+            color: #4ade80;
+            padding: 6px 14px;
+            border-radius: 8px;
+            font-size: 12px;
+            font-weight: 700;
+            margin-top: 10px;
+        }
+
+        .saved-badge.show {
+            display: inline-block;
+        }
+    </style>
+</head>
+
+<body>
+    <header class="topbar">
+        <div class="logo-row">
+            <div class="logo-mark">S</div>
+            <div class="logo-name">Syn<span>apse</span></div>
+        </div>
+        <button class="btn-logout" onclick="logout()">Sign Out</button>
+    </header>
+
+    <main class="main">
+        <div class="greeting">Welcome, <span id="userName">Student</span> 👋</div>
+        <div class="sub">Follow these 3 steps to connect to your classroom.</div>
+
+        <div class="steps">
+
+            <!-- Step 1: Install extension -->
+            <div class="step-card">
+                <div class="step-num">1</div>
+                <div class="step-body">
+                    <div class="step-title">Install the Synapse VS Code Extension</div>
+                    <div class="step-sub">Open VS Code, go to the Extensions panel (Ctrl+Shift+X), and search for
+                        <strong style="color:#e5e5e5">Synapse Debugging Intelligence</strong>.</div>
+                </div>
+            </div>
+
+            <!-- Step 2: Enter classroom ID -->
+            <div class="step-card highlight">
+                <div class="step-num">2</div>
+                <div class="step-body">
+                    <div class="step-title">Enter Your Classroom ID</div>
+                    <div class="step-sub">Ask your instructor for the classroom ID, then paste it in the box below and
+                        in your VS Code settings.</div>
+                    <input class="classroom-id-input" id="classIdInput" placeholder="e.g. PYBOOT-2026-XK3F" />
+                    <div>
+                        <button class="btn-save-id" onclick="saveClassroomId()">Save</button>
+                        <span class="saved-badge" id="savedBadge">✓ Saved!</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Step 3: Set in VS Code -->
+            <div class="step-card">
+                <div class="step-num">3</div>
+                <div class="step-body">
+                    <div class="step-title">Paste the ID in VS Code Settings</div>
+                    <div class="step-sub">Open VS Code settings (Ctrl+,), search for <strong
+                            style="color:#e5e5e5">synapse.cohortId</strong>, and paste your classroom ID.</div>
+                    <div class="step-code">
+                        <span id="idDisplay">"synapse.cohortId": "PYBOOT-2026-XK3F"</span>
+                        <button class="copy-btn" onclick="copyId()">Copy</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Step 4: You're in! -->
+            <div class="step-card">
+                <div class="step-num">✓</div>
+                <div class="step-body">
+                    <div class="step-title">You're all set!</div>
+                    <div class="step-sub">Open any <strong style="color:#e5e5e5">.py</strong> file in VS Code. Synapse
+                        will automatically start tracking your debugging sessions and your instructor can see your
+                        progress on their dashboard.</div>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <script>
+        const user = JSON.parse(localStorage.getItem('synapse_user') || 'null');
+        if (!user) { window.location.href = 'auth.html'; }
+        document.getElementById('userName').textContent = user?.name || user?.email || 'Student';
+
+        // Restore saved ID
+        const saved = localStorage.getItem('synapse_classroom_id') || '';
+        if (saved) {
+            document.getElementById('classIdInput').value = saved;
+            document.getElementById('idDisplay').textContent = `"synapse.cohortId": "${saved}"`;
+        }
+
+        function saveClassroomId() {
+            const id = document.getElementById('classIdInput').value.trim().toUpperCase();
+            if (!id) return;
+            localStorage.setItem('synapse_classroom_id', id);
+            document.getElementById('idDisplay').textContent = `"synapse.cohortId": "${id}"`;
+            document.getElementById('savedBadge').classList.add('show');
+            setTimeout(() => document.getElementById('savedBadge').classList.remove('show'), 2000);
+        }
+
+        function copyId() {
+            const text = document.getElementById('idDisplay').textContent;
+            navigator.clipboard.writeText(text).catch(() => { });
+        }
+
+        function logout() {
+            localStorage.removeItem('synapse_user');
+            window.location.href = 'auth.html';
+        }
+    </script>
+</body>
+
+</html>

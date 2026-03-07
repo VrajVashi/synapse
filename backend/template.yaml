@@ -1,0 +1,575 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  Synapse — Debugging Intelligence Platform
+  DynamoDB tables, Lambda functions, and API Gateway for session tracking.
+
+Globals:
+  Function:
+    Runtime: nodejs20.x
+    Timeout: 15
+    MemorySize: 256
+    Environment:
+      Variables:
+        SESSIONS_TABLE: !Ref DebuggingSessionsTable
+        USERS_TABLE: !Ref UserProfilesTable
+        COHORT_TABLE: !Ref CohortPatternsTable
+        SNAPSHOTS_BUCKET: !Ref CodeSnapshotsBucket
+
+Resources:
+
+  # ============================================================
+  # API Gateway
+  # ============================================================
+  SynapseApi:
+    Type: AWS::Serverless::Api
+    Properties:
+      Name: synapse-api
+      StageName: prod
+      Cors:
+        AllowMethods: "'GET,POST,OPTIONS'"
+        AllowHeaders: "'Content-Type,Authorization'"
+        AllowOrigin: "'*'"
+
+  # ============================================================
+  # Lambda: sessionWriter
+  # POST /sessions — writes debugging sessions to DynamoDB
+  # ============================================================
+  SessionWriterFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: synapse-session-writer
+      Handler: index.handler
+      CodeUri: functions/sessionWriter/
+      Description: Receives debugging session data and writes to DynamoDB
+      Events:
+        PostSession:
+          Type: Api
+          Properties:
+            RestApiId: !Ref SynapseApi
+            Path: /sessions
+            Method: POST
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action:
+                - dynamodb:PutItem
+              Resource: !GetAtt DebuggingSessionsTable.Arn
+            - Effect: Allow
+              Action:
+                - dynamodb:UpdateItem
+              Resource: !GetAtt UserProfilesTable.Arn
+            - Effect: Allow
+              Action:
+                - s3:PutObject
+              Resource: !Sub "${CodeSnapshotsBucket.Arn}/*"
+
+  # ============================================================
+  # Lambda: sessionReader
+  # GET /sessions?studentId=X — reads sessions from DynamoDB
+  # ============================================================
+  SessionReaderFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: synapse-session-reader
+      Handler: index.handler
+      CodeUri: functions/sessionReader/
+      Description: Returns debugging sessions for a student
+      Events:
+        GetSessions:
+          Type: Api
+          Properties:
+            RestApiId: !Ref SynapseApi
+            Path: /sessions
+            Method: GET
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action:
+                - dynamodb:Query
+              Resource:
+                - !GetAtt DebuggingSessionsTable.Arn
+                - !Sub "${DebuggingSessionsTable.Arn}/index/*"
+            - Effect: Allow
+              Action:
+                - s3:GetObject
+              Resource: !Sub "${CodeSnapshotsBucket.Arn}/*"
+
+  # ============================================================
+  # Lambda: cohortReader
+  # GET /cohort/patterns?errorType=X — reads cohort patterns
+  # ============================================================
+  CohortReaderFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: synapse-cohort-reader
+      Handler: index.handler
+      CodeUri: functions/cohortReader/
+      Description: Returns cohort-wide debugging patterns for an error type
+      Events:
+        GetCohortPatterns:
+          Type: Api
+          Properties:
+            RestApiId: !Ref SynapseApi
+            Path: /cohort/patterns
+            Method: GET
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action:
+                - dynamodb:GetItem
+              Resource: !GetAtt CohortPatternsTable.Arn
+            - Effect: Allow
+              Action:
+                - dynamodb:Query
+              Resource:
+                - !GetAtt DebuggingSessionsTable.Arn
+                - !Sub "${DebuggingSessionsTable.Arn}/index/*"
+
+  # ============================================================
+  # Lambda: studentDNA
+  # GET /students/{id}/dna — computes debugging DNA profile
+  # ============================================================
+  StudentDNAFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: synapse-student-dna
+      Handler: index.handler
+      CodeUri: functions/studentDNA/
+      Description: Computes a student's Debugging DNA profile from session history
+      Events:
+        GetStudentDNA:
+          Type: Api
+          Properties:
+            RestApiId: !Ref SynapseApi
+            Path: /students/{id}/dna
+            Method: GET
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action:
+                - dynamodb:Query
+              Resource:
+                - !GetAtt DebuggingSessionsTable.Arn
+                - !Sub "${DebuggingSessionsTable.Arn}/index/*"
+            - Effect: Allow
+              Action:
+                - dynamodb:Scan
+              Resource: !GetAtt UserProfilesTable.Arn
+
+  # ============================================================
+  # Lambda: quizHandler
+  # GET  /quiz?errorType=X    — returns quiz questions
+  # POST /quiz/results        — saves quiz result
+  # ============================================================
+  QuizHandlerFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: synapse-quiz-handler
+      Handler: index.handler
+      CodeUri: functions/quizHandler/
+      Description: Serves quiz questions and records quiz results
+      Events:
+        GetQuiz:
+          Type: Api
+          Properties:
+            RestApiId: !Ref SynapseApi
+            Path: /quiz
+            Method: GET
+        PostQuizResult:
+          Type: Api
+          Properties:
+            RestApiId: !Ref SynapseApi
+            Path: /quiz/results
+            Method: POST
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action:
+                - dynamodb:UpdateItem
+              Resource: !GetAtt UserProfilesTable.Arn
+
+  # ============================================================
+  # Lambda: aiAnalyzer
+  # POST /analyze — Tier 3 AI analysis via AWS Bedrock Claude
+  # ============================================================
+  AIAnalyzerFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: synapse-ai-analyzer
+      Handler: index.handler
+      CodeUri: functions/aiAnalyzer/
+      Timeout: 30
+      MemorySize: 512
+      Description: AI-powered code analysis using AWS Bedrock (Claude Haiku 4.5)
+      Environment:
+        Variables:
+          BEDROCK_REGION: ap-south-1
+          BEDROCK_MODEL_ID: global.anthropic.claude-haiku-4-5-20251001-v1:0
+      Events:
+        PostAnalyze:
+          Type: Api
+          Properties:
+            RestApiId: !Ref SynapseApi
+            Path: /analyze
+            Method: POST
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action:
+                - bedrock:InvokeModel
+              Resource:
+                - "arn:aws:bedrock:ap-south-1::foundation-model/anthropic.claude-haiku-4-5-20251001-v1:0"
+                - !Sub "arn:aws:bedrock:ap-south-1:${AWS::AccountId}:inference-profile/global.anthropic.claude-haiku-4-5-20251001-v1:0"
+                - "arn:aws:bedrock:*::foundation-model/anthropic.claude-haiku-4-5-20251001-v1:0"
+
+  # ============================================================
+  # Lambda: cohortInfo
+  # GET /cohort/info — returns basic cohort metadata
+  # ============================================================
+  CohortInfoFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: synapse-cohort-info
+      Handler: index.handler
+      CodeUri: functions/cohortInfo/
+      Description: Returns basic cohort metadata (name, week, student count)
+      Events:
+        GetCohortInfo:
+          Type: Api
+          Properties:
+            RestApiId: !Ref SynapseApi
+            Path: /cohort/info
+            Method: GET
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action:
+                - dynamodb:Scan
+              Resource: !GetAtt UserProfilesTable.Arn
+
+  # ============================================================
+  # Lambda: cohortHeatmap
+  # GET /cohort/heatmap — returns struggle heatmap data
+  # ============================================================
+  CohortHeatmapFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: synapse-cohort-heatmap
+      Handler: index.handler
+      CodeUri: functions/cohortHeatmap/
+      Description: Returns error-type attempt counts and rates for the cohort
+      Events:
+        GetCohortHeatmap:
+          Type: Api
+          Properties:
+            RestApiId: !Ref SynapseApi
+            Path: /cohort/heatmap
+            Method: GET
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action:
+                - dynamodb:Scan
+              Resource:
+                - !GetAtt DebuggingSessionsTable.Arn
+                - !Sub "${DebuggingSessionsTable.Arn}/index/*"
+
+  # ============================================================
+  # Lambda: cohortAtRisk
+  # GET /cohort/at-risk — returns at-risk student list
+  # ============================================================
+  CohortAtRiskFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: synapse-cohort-at-risk
+      Handler: index.handler
+      CodeUri: functions/cohortAtRisk/
+      Description: Returns students whose attempt count is far above the class average
+      Events:
+        GetCohortAtRisk:
+          Type: Api
+          Properties:
+            RestApiId: !Ref SynapseApi
+            Path: /cohort/at-risk
+            Method: GET
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action:
+                - dynamodb:Scan
+              Resource:
+                - !GetAtt DebuggingSessionsTable.Arn
+                - !Sub "${DebuggingSessionsTable.Arn}/index/*"
+
+  # ============================================================
+  # Lambda: cohortMastery
+  # GET /cohort/mastery — returns concept mastery percentages
+  # ============================================================
+  CohortMasteryFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: synapse-cohort-mastery
+      Handler: index.handler
+      CodeUri: functions/cohortMastery/
+      Description: Returns concept mastery levels computed from session resolution data
+      Events:
+        GetCohortMastery:
+          Type: Api
+          Properties:
+            RestApiId: !Ref SynapseApi
+            Path: /cohort/mastery
+            Method: GET
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action:
+                - dynamodb:Scan
+              Resource:
+                - !GetAtt DebuggingSessionsTable.Arn
+                - !GetAtt UserProfilesTable.Arn
+
+  # ============================================================
+  # Lambda: cohortCurriculum
+  # GET /cohort/curriculum — returns AI curriculum insights
+  # ============================================================
+  CohortCurriculumFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: synapse-cohort-curriculum
+      Handler: index.handler
+      CodeUri: functions/cohortCurriculum/
+      Description: Returns curriculum gap insights and recommendations for the cohort
+      Events:
+        GetCohortCurriculum:
+          Type: Api
+          Properties:
+            RestApiId: !Ref SynapseApi
+            Path: /cohort/curriculum
+            Method: GET
+
+  # ============================================================
+  # Lambda: cohortStats
+  # GET /cohort/stats — returns weekly overview stats
+  # ============================================================
+  CohortStatsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: synapse-cohort-stats
+      Handler: index.handler
+      CodeUri: functions/cohortStats/
+      Description: Returns high-level weekly stats for the cohort overview cards
+      Events:
+        GetCohortStats:
+          Type: Api
+          Properties:
+            RestApiId: !Ref SynapseApi
+            Path: /cohort/stats
+            Method: GET
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action:
+                - dynamodb:Scan
+              Resource:
+                - !GetAtt DebuggingSessionsTable.Arn
+                - !Sub "${DebuggingSessionsTable.Arn}/index/*"
+
+  # ============================================================
+  # Lambda: cohortHomework
+  # GET  /cohort/homework          — list assignments
+  # POST /cohort/homework          — create assignment
+  # POST /cohort/homework/{id}/close — close assignment
+  # ============================================================
+  CohortHomeworkFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: synapse-cohort-homework
+      Handler: index.handler
+      CodeUri: functions/cohortHomework/
+      Description: Manages homework assignments for the cohort
+      Events:
+        GetHomework:
+          Type: Api
+          Properties:
+            RestApiId: !Ref SynapseApi
+            Path: /cohort/homework
+            Method: GET
+        PostHomework:
+          Type: Api
+          Properties:
+            RestApiId: !Ref SynapseApi
+            Path: /cohort/homework
+            Method: POST
+        CloseHomework:
+          Type: Api
+          Properties:
+            RestApiId: !Ref SynapseApi
+            Path: /cohort/homework/{id}/close
+            Method: POST
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action:
+                - dynamodb:Scan
+                - dynamodb:PutItem
+                - dynamodb:UpdateItem
+              Resource: !GetAtt DebuggingSessionsTable.Arn
+
+  # ============================================================
+  # S3: Code Snapshots Bucket
+  # Stores code snapshots for debugging replay
+  # ============================================================
+  CodeSnapshotsBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub "synapse-code-snapshots-${AWS::AccountId}"
+      LifecycleConfiguration:
+        Rules:
+          - Id: ExpireOldSnapshots
+            Status: Enabled
+            ExpirationInDays: 90
+      CorsConfiguration:
+        CorsRules:
+          - AllowedHeaders: ['*']
+            AllowedMethods: [GET]
+            AllowedOrigins: ['*']
+            MaxAge: 3600
+      Tags:
+        - Key: Project
+          Value: Synapse
+        - Key: Environment
+          Value: dev
+
+  # ============================================================
+  # DebuggingSessions Table
+  # PK: session_id | SK: timestamp
+  # GSI1: user_id + timestamp
+  # GSI2: cohort_id + error_type
+  # ============================================================
+  DebuggingSessionsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: synapse-debugging-sessions
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: session_id
+          AttributeType: S
+        - AttributeName: timestamp
+          AttributeType: N
+        - AttributeName: user_id
+          AttributeType: S
+        - AttributeName: cohort_id
+          AttributeType: S
+        - AttributeName: error_type
+          AttributeType: S
+      KeySchema:
+        - AttributeName: session_id
+          KeyType: HASH
+        - AttributeName: timestamp
+          KeyType: RANGE
+      GlobalSecondaryIndexes:
+        - IndexName: user_id-timestamp-index
+          KeySchema:
+            - AttributeName: user_id
+              KeyType: HASH
+            - AttributeName: timestamp
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+        - IndexName: cohort_id-error_type-index
+          KeySchema:
+            - AttributeName: cohort_id
+              KeyType: HASH
+            - AttributeName: error_type
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+      Tags:
+        - Key: Project
+          Value: Synapse
+        - Key: Environment
+          Value: dev
+
+  # ============================================================
+  # UserProfiles Table
+  # PK: user_id
+  # ============================================================
+  UserProfilesTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: synapse-user-profiles
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: user_id
+          AttributeType: S
+      KeySchema:
+        - AttributeName: user_id
+          KeyType: HASH
+      Tags:
+        - Key: Project
+          Value: Synapse
+        - Key: Environment
+          Value: dev
+
+  # ============================================================
+  # CohortPatterns Table
+  # PK: cohort_id | SK: error_type
+  # ============================================================
+  CohortPatternsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: synapse-cohort-patterns
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: cohort_id
+          AttributeType: S
+        - AttributeName: error_type
+          AttributeType: S
+      KeySchema:
+        - AttributeName: cohort_id
+          KeyType: HASH
+        - AttributeName: error_type
+          KeyType: RANGE
+      Tags:
+        - Key: Project
+          Value: Synapse
+        - Key: Environment
+          Value: dev
+
+Outputs:
+  ApiUrl:
+    Description: API Gateway endpoint URL
+    Value: !Sub "https://${SynapseApi}.execute-api.${AWS::Region}.amazonaws.com/prod"
+
+  DebuggingSessionsTableName:
+    Description: DynamoDB table for debugging sessions
+    Value: !Ref DebuggingSessionsTable
+
+  DebuggingSessionsTableArn:
+    Description: ARN of the debugging sessions table
+    Value: !GetAtt DebuggingSessionsTable.Arn
+
+  UserProfilesTableName:
+    Description: DynamoDB table for user profiles
+    Value: !Ref UserProfilesTable
+
+  UserProfilesTableArn:
+    Description: ARN of the user profiles table
+    Value: !GetAtt UserProfilesTable.Arn
+
+  CohortPatternsTableName:
+    Description: DynamoDB table for cohort patterns
+    Value: !Ref CohortPatternsTable
+
+  CohortPatternsTableArn:
+    Description: ARN of the cohort patterns table
+    Value: !GetAtt CohortPatternsTable.Arn
+
+  CodeSnapshotsBucketName:
+    Description: S3 bucket for code snapshots
+    Value: !Ref CodeSnapshotsBucket
+
+  CodeSnapshotsBucketArn:
+    Description: ARN of code snapshots bucket
+    Value: !GetAtt CodeSnapshotsBucket.Arn

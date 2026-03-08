@@ -1,11 +1,16 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { motion } from 'framer-motion';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../components/Toast';
 import { useMagneticHover } from '../hooks/useMagneticHover';
 import { API } from '../api';
 import ParticleField from '../components/ParticleField';
 import AuroraBackground from '../components/AuroraBackground';
+import { staggerContainer, scaleIn, fadeUp, fadeIn, ease, prefersReducedMotion } from '../lib/animations';
+
+const shouldAnimate = !prefersReducedMotion;
+const cardsStagger = staggerContainer(0.08, 0.2);
 
 function ClassCard({ classroom, index }) {
     const { ref, style, onMouseMove, onMouseLeave } = useMagneticHover(4);
@@ -22,18 +27,17 @@ function ClassCard({ classroom, index }) {
     const initial = (classroom.name || 'C')[0].toUpperCase();
 
     return (
-        <a
+        <motion.a
             ref={ref}
             href={`/?classroomId=${classroom.id}&classroomName=${encodeURIComponent(classroom.name)}`}
             onClick={(e) => { e.preventDefault(); navigate(`/?classroomId=${classroom.id}&classroomName=${encodeURIComponent(classroom.name)}`); }}
             onMouseMove={onMouseMove}
             onMouseLeave={onMouseLeave}
-            className="block relative no-underline text-white transition-all duration-150"
-            style={{
-                ...style,
-                opacity: 0,
-                animation: `slide-up 0.5s cubic-bezier(0.22,1,0.36,1) ${index * 80}ms forwards`,
-            }}
+            className="block relative no-underline text-white"
+            variants={scaleIn}
+            whileHover={{ y: -4 }}
+            transition={{ duration: 0.2, ease: [0.0, 0.0, 0.2, 1] }}
+            style={{ ...style, willChange: 'transform' }}
         >
             <div className="relative overflow-hidden"
                 style={{
@@ -47,21 +51,26 @@ function ClassCard({ classroom, index }) {
                 onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#E8FF47'; }}
                 onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#2A2A2A'; e.currentTarget.style.borderLeftColor = '#E8FF47'; }}
             >
-                {/* Watermark letter */}
-                <div style={{
-                    fontFamily: 'var(--font-display)',
-                    fontSize: '180px',
-                    color: '#1E1E1E',
-                    position: 'absolute',
-                    bottom: '-20px',
-                    right: '16px',
-                    lineHeight: 1,
-                    pointerEvents: 'none',
-                    userSelect: 'none',
-                    zIndex: 0,
-                }}>
+                {/* Watermark letter — ghostly reveal after card */}
+                <motion.div
+                    style={{
+                        fontFamily: 'var(--font-display)',
+                        fontSize: '180px',
+                        color: '#1E1E1E',
+                        position: 'absolute',
+                        bottom: '-20px',
+                        right: '16px',
+                        lineHeight: 1,
+                        pointerEvents: 'none',
+                        userSelect: 'none',
+                        zIndex: 0,
+                    }}
+                    initial={shouldAnimate ? { opacity: 0 } : false}
+                    animate={{ opacity: 1 }}
+                    transition={{ duration: 0.8, delay: 0.4 + (index * 0.08) }}
+                >
                     {initial}
-                </div>
+                </motion.div>
 
                 {/* Card content */}
                 <div className="relative" style={{ zIndex: 1 }}>
@@ -93,7 +102,7 @@ function ClassCard({ classroom, index }) {
                     </div>
                 </div>
             </div>
-        </a>
+        </motion.a>
     );
 }
 
@@ -181,17 +190,37 @@ export default function ClassroomsPage() {
             <main className="max-w-5xl mx-auto px-6 py-11 relative z-10 page-content">
                 <div className="flex items-end justify-between mb-9">
                     <div>
-                        <h1 style={{ fontFamily: 'var(--font-display)', fontSize: '52px', letterSpacing: '3px', lineHeight: 1, color: '#F5F5F5' }}>MY CLASSROOMS</h1>
-                        <p className="mt-2" style={{ fontFamily: 'var(--font-sans)', fontSize: '14px', color: '#666' }}>Each classroom gets a unique ID students enter in VS Code.</p>
+                        {/* Title — clipReveal curtain */}
+                        <div style={{ overflow: 'hidden' }}>
+                            <motion.h1
+                                style={{ fontFamily: 'var(--font-display)', fontSize: '52px', letterSpacing: '3px', lineHeight: 1, color: '#F5F5F5' }}
+                                initial={shouldAnimate ? { clipPath: 'inset(0 100% 0 0)' } : false}
+                                animate={{ clipPath: 'inset(0 0% 0 0)' }}
+                                transition={{ duration: 0.6, ease: [0.76, 0, 0.24, 1], delay: 0.1 }}
+                            >MY CLASSROOMS</motion.h1>
+                        </div>
+                        <motion.p
+                            className="mt-2"
+                            style={{ fontFamily: 'var(--font-sans)', fontSize: '14px', color: '#666' }}
+                            variants={fadeUp}
+                            initial={shouldAnimate ? 'hidden' : false}
+                            animate="show"
+                            transition={{ delay: 0.3 }}
+                        >Each classroom gets a unique ID students enter in VS Code.</motion.p>
                     </div>
-                    <button onClick={() => setShowModal(true)}
-                        className="px-5 py-2.5 text-[14px] font-semibold transition-all duration-150"
-                        style={{ background: '#E8FF47', color: '#0D0D0D', borderRadius: '2px', border: 'none', fontFamily: 'var(--font-sans)' }}
-                        onMouseEnter={e => e.currentTarget.style.background = '#D4EB3A'}
-                        onMouseLeave={e => e.currentTarget.style.background = '#E8FF47'}
+                    <motion.button
+                        onClick={() => setShowModal(true)}
+                        className="px-5 py-2.5 text-[14px] font-semibold"
+                        style={{ background: '#E8FF47', color: '#0D0D0D', borderRadius: '2px', border: 'none', fontFamily: 'var(--font-sans)', willChange: 'transform' }}
+                        variants={fadeIn}
+                        initial={shouldAnimate ? 'hidden' : false}
+                        animate="show"
+                        transition={{ delay: 0.35 }}
+                        whileHover={{ scale: 1.02, background: '#D4EB3A' }}
+                        whileTap={{ scale: 0.97 }}
                     >
                         + New Classroom
-                    </button>
+                    </motion.button>
                 </div>
 
                 {classrooms.length === 0 ? (
@@ -206,9 +235,14 @@ export default function ClassroomsPage() {
                         </button>
                     </div>
                 ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <motion.div
+                        className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"
+                        variants={cardsStagger}
+                        initial={shouldAnimate ? 'hidden' : false}
+                        animate="show"
+                    >
                         {classrooms.map((c, i) => <ClassCard key={c.id} classroom={c} index={i} />)}
-                    </div>
+                    </motion.div>
                 )}
             </main>
 

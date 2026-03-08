@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { motion } from 'framer-motion';
 import { useAuth } from '../context/AuthContext';
 import { API } from '../api';
 import ParticleField from '../components/ParticleField';
@@ -8,6 +9,14 @@ import NavSidebar from '../components/NavSidebar';
 import StatCard from '../components/StatCard';
 import StruggleRow from '../components/StruggleRow';
 import StudentRow from '../components/StudentRow';
+import { staggerContainer, fadeUp, slideInLeft, prefersReducedMotion } from '../lib/animations';
+
+const shouldAnimate = !prefersReducedMotion;
+const rowsStagger = staggerContainer(0.1, 0.25);
+const cardsStagger = staggerContainer(0.09, 0.2);
+const homeworkStagger = staggerContainer(0.1, 0.3);
+const curriculumStagger = staggerContainer(0.1, 0.25);
+
 
 export default function DashboardPage() {
     const { user } = useAuth();
@@ -186,40 +195,52 @@ export default function DashboardPage() {
                         </>
                     )}
 
-                    {/* ── HEATMAP ─── (Enhancement 3: hover state) */}
                     {activeView === 'heatmap' && (
                         <div className="p-6" style={{ background: '#1A1A1A', border: '1px solid #2A2A2A', borderRadius: '2px' }}>
                             {/* Column headers */}
-                            <div className="grid items-center gap-4 pb-3 mb-2" style={{ gridTemplateColumns: '200px 1fr 80px 80px 90px 90px', borderBottom: '1px solid #1E1E1E' }}>
+                            <motion.div
+                                className="grid items-center gap-4 pb-3 mb-2"
+                                style={{ gridTemplateColumns: '200px 1fr 80px 80px 90px 90px', borderBottom: '1px solid #1E1E1E' }}
+                                initial={shouldAnimate ? { opacity: 0 } : false}
+                                animate={{ opacity: 1 }}
+                                transition={{ delay: 0.3, duration: 0.3 }}
+                            >
                                 <span style={{ fontFamily: 'var(--font-sans)', fontSize: '9px', letterSpacing: '3px', textTransform: 'uppercase', color: '#444' }}>Concept</span>
                                 <span style={{ fontFamily: 'var(--font-sans)', fontSize: '9px', letterSpacing: '3px', textTransform: 'uppercase', color: '#444' }}>Severity</span>
                                 <span style={{ fontFamily: 'var(--font-sans)', fontSize: '9px', letterSpacing: '3px', textTransform: 'uppercase', color: '#444' }}>Attempts</span>
                                 <span style={{ fontFamily: 'var(--font-sans)', fontSize: '9px', letterSpacing: '3px', textTransform: 'uppercase', color: '#444' }}>Crash Rate</span>
                                 <span style={{ fontFamily: 'var(--font-sans)', fontSize: '9px', letterSpacing: '3px', textTransform: 'uppercase', color: '#444' }}>Avg Fix</span>
                                 <span style={{ fontFamily: 'var(--font-sans)', fontSize: '9px', letterSpacing: '3px', textTransform: 'uppercase', color: '#444' }}>Quiz Rate</span>
-                            </div>
-                            <div>
+                            </motion.div>
+                            <motion.div
+                                variants={rowsStagger}
+                                initial={shouldAnimate ? 'hidden' : false}
+                                animate="show"
+                            >
                                 {heatmap.map((row, i) => {
                                     const rankColors = ['#FF6B35', '#FF8C35', '#E8B835', '#E8FF47', '#E8FF47'];
                                     const crashColor = row.pct > 50 ? '#FF6B35' : row.pct > 30 ? '#E8B835' : '#4ADE80';
                                     return (
-                                        <div key={i} className="grid items-center gap-4 py-5 px-2 group"
+                                        <motion.div key={i}
+                                            className="grid items-center gap-4 py-5 px-2"
                                             style={{
                                                 gridTemplateColumns: '200px 1fr 80px 80px 90px 90px',
                                                 borderBottom: i < heatmap.length - 1 ? '1px solid #1E1E1E' : 'none',
-                                                opacity: 0, animation: `slide-left 0.4s cubic-bezier(0.22,1,0.36,1) ${i * 60}ms forwards`,
-                                                transition: 'all 0.12s ease',
+                                                transition: 'background 0.12s ease',
+                                                willChange: 'transform',
                                             }}
+                                            variants={{ hidden: { opacity: 0, x: -20 }, show: { opacity: 1, x: 0, transition: { duration: 0.4, ease: [0.19, 1, 0.22, 1] } } }}
+                                            whileHover={{ x: 4, background: 'rgba(232,255,71,0.04)' }}
+                                            transition={{ duration: 0.15, ease: [0.0, 0.0, 0.2, 1] }}
                                             onMouseEnter={e => {
-                                                e.currentTarget.style.background = 'rgba(232,255,71,0.04)';
                                                 const rank = e.currentTarget.querySelector('[data-rank]');
                                                 if (rank) rank.style.color = '#E8FF47';
                                             }}
                                             onMouseLeave={e => {
-                                                e.currentTarget.style.background = 'transparent';
                                                 const rank = e.currentTarget.querySelector('[data-rank]');
                                                 if (rank) rank.style.color = '#2A2A2A';
-                                            }}>
+                                            }}
+                                        >
                                             <div className="flex items-center gap-2.5">
                                                 <span data-rank className="tabular-nums w-8" style={{ fontFamily: 'var(--font-display)', fontSize: '32px', color: '#2A2A2A', transition: 'color 0.12s ease' }}>{i + 1}</span>
                                                 <span style={{ fontFamily: 'var(--font-sans)', fontSize: '15px', fontWeight: 600, color: '#F5F5F5' }}>{row.errorType}</span>
@@ -231,39 +252,51 @@ export default function DashboardPage() {
                                             <span className="tabular-nums" style={{ fontFamily: 'var(--font-display)', fontSize: '28px', color: crashColor }}>{row.pct}%</span>
                                             <span style={{ fontFamily: 'var(--font-sans)', fontSize: '13px', color: '#888' }}>{row.avgFixMin} min</span>
                                             <span style={{ fontFamily: 'var(--font-sans)', fontSize: '13px', color: '#888' }}>{row.quizCompletion}%</span>
-                                        </div>
+                                        </motion.div>
                                     );
                                 })}
-                            </div>
+                            </motion.div>
                         </div>
                     )}
 
                     {/* ── STUDENTS ─── */}
                     {activeView === 'students' && (
                         <div className="p-6" style={{ background: '#1A1A1A', border: '1px solid #2A2A2A', borderRadius: '2px' }}>
-                            <div className="flex flex-col">
+                            <motion.div
+                                className="flex flex-col"
+                                variants={cardsStagger}
+                                initial={shouldAnimate ? 'hidden' : false}
+                                animate="show"
+                            >
                                 {atRisk.map((s, i) => (
                                     <StudentRow key={i} student={s} delay={i * 80} />
                                 ))}
-                            </div>
+                            </motion.div>
                         </div>
                     )}
 
-                    {/* ── MASTERY ─── (Enhancement 8: threshold labels) */}
+                    {/* ── MASTERY ─── */}
                     {activeView === 'mastery' && (
                         <div className="p-8" style={{ background: '#1A1A1A', border: '1px solid #2A2A2A', borderRadius: '2px' }}>
-                            <div className="space-y-0">
+                            <motion.div
+                                className="space-y-0"
+                                variants={rowsStagger}
+                                initial={shouldAnimate ? 'hidden' : false}
+                                animate="show"
+                            >
                                 {mastery.map((m, i) => {
                                     const mColor = masteryColor(m.mastery);
                                     const exceeded = m.mastery >= m.target;
                                     const tickColor = exceeded ? '#4ADE80' : '#444';
                                     return (
-                                        <div key={i} className="grid items-center gap-5 py-4"
+                                        <motion.div key={i}
+                                            className="grid items-center gap-5 py-4"
                                             style={{
                                                 gridTemplateColumns: '180px 1fr 80px',
                                                 borderBottom: i < mastery.length - 1 ? '1px solid #1E1E1E' : 'none',
-                                                opacity: 0, animation: `slide-left 0.4s cubic-bezier(0.22,1,0.36,1) ${i * 80}ms forwards`,
-                                            }}>
+                                            }}
+                                            variants={{ hidden: { opacity: 0, x: -20 }, show: { opacity: 1, x: 0, transition: { duration: 0.4, ease: [0.19, 1, 0.22, 1] } } }}
+                                        >
                                             <span style={{ fontFamily: 'var(--font-sans)', fontSize: '14px', fontWeight: 500, color: '#F5F5F5' }}>{m.concept}</span>
                                             <div className="relative" style={{ height: '8px', background: '#222', borderRadius: 0 }}>
                                                 {/* Threshold marker with TARGET label */}
@@ -277,29 +310,36 @@ export default function DashboardPage() {
                                                 <span style={{ fontFamily: 'var(--font-display)', fontSize: '28px', color: mColor }}>{m.mastery}%</span>
                                                 <span style={{ fontFamily: 'var(--font-sans)', fontSize: '11px', color: '#444' }}> / {m.target}%</span>
                                             </span>
-                                        </div>
+                                        </motion.div>
                                     );
                                 })}
-                            </div>
+                            </motion.div>
                         </div>
                     )}
 
-                    {/* ── CURRICULUM ─── (Enhancement 7: italic recs) */}
+                    {/* ── CURRICULUM ─── */}
                     {activeView === 'curriculum' && (
                         <div className="p-6" style={{ background: '#1A1A1A', border: '1px solid #2A2A2A', borderRadius: '2px' }}>
-                            <div className="space-y-3">
+                            <motion.div
+                                className="space-y-3"
+                                variants={curriculumStagger}
+                                initial={shouldAnimate ? 'hidden' : false}
+                                animate="show"
+                            >
                                 {curriculum.map((item, i) => {
                                     const bColor = curBorder[item.type] || '#E8B835';
                                     const badgeColor = curBadge[item.type] || '#E8B835';
                                     return (
-                                        <div key={i} className="p-5 transition-all duration-200"
+                                        <motion.div key={i}
+                                            className="p-5 transition-all duration-200"
                                             style={{
                                                 background: '#141414',
                                                 border: '1px solid #2A2A2A',
                                                 borderLeft: `3px solid ${bColor}`,
                                                 borderRadius: '2px',
-                                                opacity: 0, animation: `slide-up 0.5s cubic-bezier(0.22,1,0.36,1) ${i * 100}ms forwards`,
-                                            }}>
+                                            }}
+                                            variants={fadeUp}
+                                        >
                                             <div className="flex justify-between items-start mb-3">
                                                 <span style={{ fontFamily: 'var(--font-sans)', fontSize: '14px', fontWeight: 600, color: '#F5F5F5' }}>{item.concept}</span>
                                                 <span style={{
@@ -317,16 +357,15 @@ export default function DashboardPage() {
                                                 <div>Taught: <span style={{ color: '#888', fontWeight: 500 }}>{item.taught}</span></div>
                                                 <div>Peak Struggle: <span style={{ color: '#888', fontWeight: 500 }}>{item.peakStruggle}</span></div>
                                             </div>
-                                            {/* Enhancement 7: italic recommendation box */}
                                             <div className="leading-relaxed" style={{
                                                 fontFamily: 'var(--font-sans)', fontSize: '13px', color: '#888',
                                                 background: '#111111', border: '1px solid #222222', borderRadius: '2px',
                                                 padding: '12px 16px', fontStyle: 'italic',
                                             }}>{item.recommendation}</div>
-                                        </div>
+                                        </motion.div>
                                     );
                                 })}
-                            </div>
+                            </motion.div>
                         </div>
                     )}
 
@@ -354,39 +393,51 @@ export default function DashboardPage() {
                                     <p style={{ fontFamily: 'var(--font-sans)', fontSize: '12px', color: '#555' }}>Click + New Question to assign your first problem.</p>
                                 </div>
                             ) : (
-                                <div>
+                                <motion.div
+                                    variants={homeworkStagger}
+                                    initial={shouldAnimate ? 'hidden' : false}
+                                    animate="show"
+                                >
                                     {homework.map((q, i) => {
                                         const pct = q.totalStudents ? Math.round((q.submissionCount / q.totalStudents) * 100) : 0;
                                         const isOpen = q.status === 'open';
                                         const barColor = hwBarColor(pct);
                                         return (
-                                            <div key={q.id} className="p-5 transition-all duration-200"
+                                            <motion.div key={q.id}
+                                                className="p-5"
                                                 style={{
                                                     background: '#141414',
                                                     borderLeft: isOpen ? '3px solid #E8FF47' : '3px solid #2A2A2A',
                                                     borderBottom: '1px solid #1E1E1E',
                                                     opacity: isOpen ? 1 : 0.55,
-                                                    animation: `slide-up 0.4s cubic-bezier(0.22,1,0.36,1) ${i * 80}ms forwards`,
-                                                }}>
+                                                }}
+                                                variants={{ hidden: { opacity: 0, y: 16 }, show: { opacity: isOpen ? 1 : 0.55, y: 0, transition: { duration: 0.4, ease: [0.19, 1, 0.22, 1] } } }}
+                                                whileHover={{ y: -3 }}
+                                                transition={{ duration: 0.18, ease: [0.0, 0.0, 0.2, 1] }}
+                                            >
                                                 <div className="flex justify-between items-center mb-2">
                                                     <span style={{ fontFamily: 'var(--font-sans)', fontSize: '16px', fontWeight: 600, color: '#F5F5F5' }}>{q.title}</span>
-                                                    <span style={{
-                                                        fontSize: '10px', fontWeight: 600, fontFamily: 'var(--font-sans)',
-                                                        letterSpacing: '1px', textTransform: 'uppercase',
-                                                        padding: '3px 8px', borderRadius: '2px',
-                                                        background: isOpen ? 'rgba(74,222,128,0.12)' : 'transparent',
-                                                        color: isOpen ? '#4ADE80' : '#444',
-                                                        border: isOpen ? '1px solid rgba(74,222,128,0.25)' : '1px solid #2A2A2A',
-                                                    }}>
+                                                    <motion.span
+                                                        style={{
+                                                            fontSize: '10px', fontWeight: 600, fontFamily: 'var(--font-sans)',
+                                                            letterSpacing: '1px', textTransform: 'uppercase',
+                                                            padding: '3px 8px', borderRadius: '2px',
+                                                            background: isOpen ? 'rgba(74,222,128,0.12)' : 'transparent',
+                                                            color: isOpen ? '#4ADE80' : '#444',
+                                                            border: isOpen ? '1px solid rgba(74,222,128,0.25)' : '1px solid #2A2A2A',
+                                                        }}
+                                                        initial={shouldAnimate ? { opacity: 0, x: 8 } : false}
+                                                        animate={{ opacity: 1, x: 0 }}
+                                                        transition={{ delay: i * 0.1 + 0.5, duration: 0.25 }}
+                                                    >
                                                         {isOpen ? 'Open' : 'Closed'}
-                                                    </span>
+                                                    </motion.span>
                                                 </div>
                                                 <div className="flex gap-5 mb-2" style={{ fontFamily: 'var(--font-sans)', fontSize: '12px', color: '#555' }}>
                                                     <span>Due: {q.dueDate || 'No deadline'}</span>
                                                     <span>Submissions: <span style={{ color: '#E8FF47', fontWeight: 600 }}>{q.submissionCount}/{q.totalStudents}</span></span>
                                                     <span>Avg attempts: {q.avgAttempts || '—'}</span>
                                                 </div>
-                                                {/* Enhancement 6: color-coded progress bar */}
                                                 <div className="overflow-hidden mb-2" style={{ height: '3px', background: '#1E1E1E', borderRadius: 0 }}>
                                                     <div className="h-full" style={{ width: `${pct}%`, background: barColor, transition: 'width 0.8s cubic-bezier(0.22,1,0.36,1)', borderRadius: 0 }} />
                                                 </div>
@@ -406,10 +457,10 @@ export default function DashboardPage() {
                                                         </button>
                                                     )}
                                                 </div>
-                                            </div>
+                                            </motion.div>
                                         );
                                     })}
-                                </div>
+                                </motion.div>
                             )}
                         </div>
                     )}

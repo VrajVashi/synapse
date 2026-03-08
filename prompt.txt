@@ -1,392 +1,556 @@
-You are redesigning the Synapse educator dashboard application. The current UI looks generic and AI-generated. Your job is to transform every screen into something visually distinctive, intentional, and memorable — while keeping all existing functionality 100% intact.
-
-Do NOT change any logic, routing, data fetching, or backend connections. Only change visual/styling code.
-
----
-
-## CURRENT PROBLEMS TO FIX
-
-The current UI has these specific issues you must eliminate:
-- Dark navy + cyan color palette (overused "AI SaaS" look)
-- Floating particle dots background (extremely clichéd)
-- Generic uniform card grid with identical padding/shadows everywhere
-- System/Inter font with no typographic personality
-- Symmetric, safe, centered layouts with no visual tension
-- Flat stat cards that look templated
-- Empty Students page with no content structure
+You are adding a professional animation layer to the Synapse educator dashboard.
+The visual redesign is already done. You are ONLY adding motion — do not change 
+any colors, fonts, layout, spacing, or logic.
 
 ---
 
-## NEW DESIGN DIRECTION
+## STEP 0 — SETUP FRAMER MOTION
 
-### Color Palette — Replace entirely with:
-- Background primary: #0D0D0D (near black, warmer than current navy)
-- Background secondary: #141414
-- Background card: #1A1A1A with border: 1px solid #2A2A2A
-- Accent primary: #E8FF47 (electric yellow-green — sharp, distinctive)
-- Accent secondary: #FF6B35 (burnt orange — for warnings/at-risk)
-- Accent success: #4ADE80 (green — for good metrics)
-- Text primary: #F5F5F5
-- Text secondary: #888888
-- Text muted: #444444
+First, check if framer-motion is already in package.json.
+If it is: import it where needed, do not reinstall.
+If it is NOT: run `npm install framer-motion` then proceed.
 
-Remove ALL cyan (#00BCD4 or similar) and replace with the above palette.
+Import pattern to use everywhere:
+  import { motion, AnimatePresence } from 'framer-motion'
+  import { useEffect, useRef, useState } from 'react'
 
-### Typography — Replace entirely with:
-- Install and import from Google Fonts:
-  - "Bebas Neue" — for all page titles, big stat numbers, section headers
-  - "DM Sans" — for body text, labels, nav items, descriptions
-- Page titles (Overview, Heatmap, etc.): Bebas Neue, 52px, letter-spacing: 2px
-- Big stat numbers (1,847 / 27 / 34): Bebas Neue, 64px
-- Nav items: DM Sans, 13px, font-weight: 500
-- Card labels (TOTAL DEBUG SESSIONS, etc.): DM Sans, 10px, letter-spacing: 3px, uppercase
-- Body/descriptions: DM Sans, 14px
+Create one shared file: src/lib/animations.ts
+Paste exactly this content into it — these are your animation presets,
+use them by name throughout every component, never invent new values:
 
-Add this to your HTML head or CSS import:
-@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&display=swap');
+  // EASING CURVES
+  export const ease = {
+    snap: [0.19, 1, 0.22, 1],       // fast out, used for entrances
+    out: [0.0, 0.0, 0.2, 1],        // standard ease out
+    inOut: [0.76, 0, 0.24, 1],      // cinematic, used for page transitions
+    spring: { type: 'spring', stiffness: 400, damping: 30 },  // snappy spring
+    springSlug: { type: 'spring', stiffness: 200, damping: 25 }, // slower spring
+  }
 
-### Background — Replace particle dots with:
-Remove the particle/dot canvas animation entirely.
-Replace with a CSS-only background on the root/body:
-  background-color: #0D0D0D;
-  background-image: 
-    linear-gradient(rgba(232, 255, 71, 0.03) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(232, 255, 71, 0.03) 1px, transparent 1px);
-  background-size: 40px 40px;
-This creates a subtle technical grid that feels intentional, not generated.
+  // ENTRANCE VARIANTS — use these with motion components
+  export const fadeUp = {
+    hidden: { opacity: 0, y: 16 },
+    show: { opacity: 1, y: 0, transition: { duration: 0.4, ease: [0.19,1,0.22,1] } }
+  }
 
----
+  export const fadeIn = {
+    hidden: { opacity: 0 },
+    show: { opacity: 1, transition: { duration: 0.3, ease: [0.0,0.0,0.2,1] } }
+  }
 
-## SCREEN-BY-SCREEN INSTRUCTIONS
+  export const slideInLeft = {
+    hidden: { opacity: 0, x: -24 },
+    show: { opacity: 1, x: 0, transition: { duration: 0.35, ease: [0.19,1,0.22,1] } }
+  }
 
-### 1. AUTH PAGE (/auth)
+  export const clipReveal = {
+    hidden: { clipPath: 'inset(0 100% 0 0)' },
+    show: { clipPath: 'inset(0 0% 0 0)', 
+            transition: { duration: 0.6, ease: [0.76,0,0.24,1] } }
+  }
 
-Current: Split layout, marketing text left, form right, particle background.
+  export const staggerContainer = (staggerChildren = 0.07, delayChildren = 0.1) => ({
+    hidden: {},
+    show: { transition: { staggerChildren, delayChildren } }
+  })
 
-New design:
-- Full-bleed single column, centered, no split
-- Background: the grid pattern from above
-- Top: Synapse logo mark — make it larger, 48px, with a small yellow-green square icon
-- Headline: "DEBUGGING INTELLIGENCE" in Bebas Neue, 72px, white
-- Subheadline: "for Educators" in DM Sans, 20px, color #888888
-- Remove the bullet point feature list entirely — replace with one single line: 
-  "See exactly where students struggle — before they ask for help." in DM Sans italic, #666
-- The form card:
-  - background: #1A1A1A
-  - border: 1px solid #2A2A2A
-  - border-radius: 2px (sharp corners — not the current rounded look)
-  - padding: 40px
-  - max-width: 420px
-- Sign In / Sign Up tabs: 
-  - Remove the current pill/toggle style
-  - Use two plain text buttons with a bottom border indicator
-  - Active tab: color #E8FF47, border-bottom: 2px solid #E8FF47
-  - Inactive tab: color #666, no border
-- Demo Teacher / Demo Student buttons:
-  - border: 1px solid #2A2A2A
-  - background: transparent
-  - color: #888
-  - border-radius: 2px
-  - On hover: border-color: #E8FF47, color: #E8FF47
-- Input fields:
-  - background: #0D0D0D
-  - border: 1px solid #2A2A2A
-  - border-radius: 2px
-  - color: #F5F5F5
-  - On focus: border-color: #E8FF47, outline: none
-  - Label: DM Sans, 10px, letter-spacing: 3px, uppercase, color: #666
-- Sign In submit button:
-  - background: #E8FF47
-  - color: #0D0D0D
-  - font-family: DM Sans, font-weight: 600, font-size: 14px, letter-spacing: 1px
-  - border-radius: 2px
-  - height: 48px
-  - On hover: background: #D4EB3A
+  export const scaleIn = {
+    hidden: { opacity: 0, scale: 0.96 },
+    show: { opacity: 1, scale: 1, 
+            transition: { duration: 0.35, ease: [0.19,1,0.22,1] } }
+  }
 
----
+  // NUMBER COUNTER HOOK — for animating stat numbers
+  export function useCountUp(target: number, duration: number = 1200, 
+                              delay: number = 0) {
+    const [value, setValue] = useState(0)
+    useEffect(() => {
+      let startTime: number | null = null
+      let frameId: number
+      const delayTimeout = setTimeout(() => {
+        const step = (timestamp: number) => {
+          if (!startTime) startTime = timestamp
+          const progress = Math.min((timestamp - startTime) / duration, 1)
+          const eased = 1 - Math.pow(1 - progress, 3) // ease out cubic
+          setValue(Math.floor(eased * target))
+          if (progress < 1) frameId = requestAnimationFrame(step)
+          else setValue(target)
+        }
+        frameId = requestAnimationFrame(step)
+      }, delay)
+      return () => { clearTimeout(delayTimeout); cancelAnimationFrame(frameId) }
+    }, [target, duration, delay])
+    return value
+  }
 
-### 2. CLASSROOMS PAGE (/classrooms)
-
-Current: Top nav, page title, classroom cards in a grid.
-
-New design:
-- Top navbar:
-  - background: #0D0D0D
-  - border-bottom: 1px solid #1E1E1E
-  - Logo text "Synapse" in Bebas Neue, 22px, letter-spacing: 2px
-  - "Demo Teacher" name in DM Sans, 13px, color #666
-  - "Sign Out" button: border: 1px solid #2A2A2A, color: #666, border-radius: 2px, background: transparent
-  - On hover: border-color: #E8FF47, color: #E8FF47
-- Page title "MY CLASSROOMS": Bebas Neue, 52px, letter-spacing: 3px
-- Subtitle: DM Sans, 14px, color: #666
-- "+ New Classroom" button:
-  - background: #E8FF47
-  - color: #0D0D0D
-  - font-weight: 600
-  - border-radius: 2px
-  - No icon, just text
-- Classroom cards:
-  - background: #1A1A1A
-  - border: 1px solid #2A2A2A
-  - border-radius: 2px (sharp)
-  - On hover: border-color: #E8FF47
-  - Top accent bar: 3px solid #E8FF47 on the left side (border-left), not the icon
-  - Remove the teal book icon — replace with a large Bebas Neue letter representing the classroom initial
-  - Classroom name: Bebas Neue, 28px, white
-  - Classroom ID: DM Sans, 11px, color: #666, letter-spacing: 1px
-  - "Copy" text link: color: #E8FF47, no background
-  - Stats (0 STUDENTS, 0 SESSIONS): 
-    - Number in Bebas Neue, 24px, white
-    - Label in DM Sans, 9px, letter-spacing: 3px, uppercase, color: #666
-  - Language badge: 
-    - background: #0D0D0D
-    - border: 1px solid #2A2A2A
-    - color: #888
-    - font-size: 11px
-    - border-radius: 2px
-    - padding: 2px 8px
+  // BAR FILL HOOK — returns 0 to width% for progress bars
+  export function useBarFill(targetPercent: number, delay: number = 0) {
+    const [width, setWidth] = useState(0)
+    useEffect(() => {
+      const timeout = setTimeout(() => setWidth(targetPercent), delay + 100)
+      return () => clearTimeout(timeout)
+    }, [targetPercent, delay])
+    return width
+  }
 
 ---
 
-### 3. SIDEBAR (used in all classroom inner pages)
+## STEP 1 — PAGE TRANSITION WRAPPER
 
-Current: Dark panel, cyan active state, generic icons.
+Find the root layout component that wraps every page 
+(likely App.tsx, Layout.tsx, or wherever your router renders children).
 
-New design:
-- background: #111111
-- border-right: 1px solid #1E1E1E
-- Logo "SYNAPSE": Bebas Neue, 20px, letter-spacing: 3px, color: #F5F5F5
-- Logo icon: small yellow-green square (#E8FF47), 8px x 8px
-- Nav items:
-  - DM Sans, 13px, font-weight: 500
-  - color: #555 (inactive)
-  - padding: 10px 20px
-  - border-left: 3px solid transparent (inactive)
-  - No background highlight on inactive
-- Active nav item:
-  - color: #E8FF47
-  - border-left: 3px solid #E8FF47
-  - background: rgba(232, 255, 71, 0.05)
-- Hover state:
-  - color: #F5F5F5
-  - border-left: 3px solid #333
-- Icons: keep the same icons but change their color to match the text state
-- "Sign Out" at bottom: DM Sans, 12px, color: #444, no border, on hover: color: #E8FF47
-- Remove any separators/dividers between nav items — use spacing only
+Wrap the page outlet/children with this exact pattern:
 
----
+  <AnimatePresence mode="wait">
+    <motion.div
+      key={currentRoute}        // use the current pathname as key
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -8 }}
+      transition={{ duration: 0.25, ease: [0.19, 1, 0.22, 1] }}
+      style={{ width: '100%', height: '100%' }}
+    >
+      {children}
+    </motion.div>
+  </AnimatePresence>
 
-### 4. HEADER BAR (top of classroom pages)
-
-Current: "← Classrooms" link, page title, Active Today + Total Students on the right.
-
-New design:
-- background: #0D0D0D
-- border-bottom: 1px solid #1E1E1E
-- "← Classrooms": DM Sans, 12px, color: #555, arrow and text, on hover: color: #E8FF47
-- Page title: Bebas Neue, 42px, letter-spacing: 2px, color: #F5F5F5
-- Subtitle (Full Stack Cohort 12 · Week 3): DM Sans, 12px, color: #555
-- Right side stats:
-  - "27" and "34": Bebas Neue, 36px
-  - "27" (active today): color: #E8FF47
-  - "34" (total): color: #F5F5F5
-  - Labels: DM Sans, 9px, letter-spacing: 3px, uppercase, color: #555
-  - Separate them with a 1px vertical line: border-right: 1px solid #1E1E1E
+The key={currentRoute} is critical — without it AnimatePresence won't 
+detect page changes. Use useLocation() from react-router to get it.
+Exit animation is subtle upward — not a full slide, just 8px up and fade.
+Enter animation is 12px up from below and fade in. Duration: 250ms.
+This should feel like a clean page flip, not a dramatic slide show.
 
 ---
 
-### 5. OVERVIEW PAGE
+## STEP 2 — SIDEBAR ANIMATIONS
 
-Current: 4 uniform stat cards in a row, two equal panels below.
+Find the Sidebar component.
 
-New design for stat cards:
-- Remove equal-width grid — use CSS grid: grid-template-columns: 2fr 1fr 1fr 1.5fr
-- This makes "Total Debug Sessions" and "At-Risk Students" more prominent
-- Each card:
-  - background: #1A1A1A
-  - border: 1px solid #2A2A2A
-  - border-radius: 2px
-  - padding: 28px
-- Card label: DM Sans, 9px, letter-spacing: 3px, uppercase, color: #555
-- Big number: Bebas Neue, 64px, line-height: 1
-  - Total Debug Sessions: color: #F5F5F5
-  - Avg Fix Time: color: #F5F5F5
-  - Quiz Completion Rate: color: #4ADE80
-  - At-Risk Students: color: #FF6B35
-- Sub-label (+12% vs last week / cohort average): DM Sans, 12px, color: #555
-- Keep the sparkline charts but change their colors:
-  - Debug sessions line: #E8FF47
-  - Fix time line: #888
-  - Quiz rate line: #4ADE80
-  - At-risk line: #FF6B35
-- At-Risk card gets a subtle left border: border-left: 3px solid #FF6B35
+1. Wrap the entire sidebar nav list in:
+   <motion.nav variants={staggerContainer(0.05, 0.1)} 
+               initial="hidden" animate="show">
 
-"Top Struggles This Week" panel:
-- background: #1A1A1A, border: 1px solid #2A2A2A, border-radius: 2px
-- Title: Bebas Neue, 22px, letter-spacing: 1px
-- "See all" link: DM Sans, 12px, color: #E8FF47
-- Each struggle row:
-  - Concept name: DM Sans, 14px, font-weight: 500, color: #F5F5F5
-  - Crash % badge: background: rgba(255,107,53,0.15), color: #FF6B35, border: 1px solid rgba(255,107,53,0.3), border-radius: 2px, font-size: 11px
-  - Fix time badge: background: #1A1A1A, color: #888, border: 1px solid #2A2A2A
-  - Quiz % badge: background: rgba(74,222,128,0.1), color: #4ADE80, border: 1px solid rgba(74,222,128,0.2)
-  - Progress bar: height: 4px, background: #222, bar fill uses color based on severity (red → yellow → green)
-  - Divider between rows: 1px solid #1E1E1E
+2. Wrap each individual nav item in:
+   <motion.div variants={slideInLeft}>
 
-"Students Needing Attention" panel:
-- Same card style as above
-- Each student row:
-  - Name: DM Sans, 14px, font-weight: 600, color: #F5F5F5
-  - Detail line: DM Sans, 12px, color: #555
-  - "1-on-1 recommended" badge: background: rgba(255,107,53,0.15), color: #FF6B35, border: 1px solid rgba(255,107,53,0.3), border-radius: 2px
-  - "Quiz not started" badge: background: rgba(232,255,71,0.1), color: #E8FF47, border: 1px solid rgba(232,255,71,0.2)
-  - "Below 40% quiz rate" badge: background: rgba(255,107,53,0.1), color: #FF6B35
-  - Row divider: 1px solid #1E1E1E
-  - Row hover: background: rgba(255,255,255,0.02)
+3. The active nav item indicator (yellow left border):
+   Replace the CSS border-left with a motion.div positioned absolutely:
+     <motion.div
+       layoutId="activeNavIndicator"
+       style={{
+         position: 'absolute', left: 0, top: 0, bottom: 0,
+         width: '3px', background: '#E8FF47'
+       }}
+       transition={{ ...ease.spring }}
+     />
+   This makes the yellow indicator SLIDE between nav items when you 
+   click a different route — it physically travels from one to the next.
+   This is the most impressive single animation in the app. Do not skip it.
+
+4. Nav item text on hover:
+   <motion.span whileHover={{ x: 3 }} transition={{ duration: 0.15 }}>
+   3px nudge to the right on hover. Subtle directional signal.
 
 ---
 
-### 6. STRUGGLE HEATMAP PAGE
+## STEP 3 — /auth PAGE ANIMATIONS
 
-Current: Simple ranked list with colored bars.
+Find the Auth page component.
 
-New design:
-- Title: Bebas Neue, 52px
-- Subtitle: DM Sans, 13px, color: #555
-- Container: background: #1A1A1A, border: 1px solid #2A2A2A, border-radius: 2px
-- Column headers above the list (add these): 
-  "CONCEPT" | "ATTEMPTS" | "CRASH RATE" | "AVG FIX" | "QUIZ RATE"
-  DM Sans, 9px, letter-spacing: 3px, uppercase, color: #444
-  border-bottom: 1px solid #1E1E1E
-- Each row:
-  - padding: 20px 28px
-  - border-bottom: 1px solid #1E1E1E
-  - Last row: no border
-  - Row number: Bebas Neue, 32px, color: #2A2A2A (large and faint — decorative)
-  - Concept name: DM Sans, 15px, font-weight: 600, color: #F5F5F5
-  - Progress bar: height: 6px, background: #222, border-radius: 0px (sharp)
-    - Rank 1 bar: #FF6B35
-    - Rank 2 bar: #FF8C35
-    - Rank 3 bar: #E8B835
-    - Rank 4-5 bars: #E8FF47
-  - Attempts number: Bebas Neue, 28px, color: #F5F5F5
-  - Crash %: Bebas Neue, 28px, color: #FF6B35 (if >50%), #E8B835 (30-50%), #4ADE80 (<30%)
-  - Fix time: DM Sans, 13px, color: #888
-  - Quiz %: DM Sans, 13px, color: #888
-  - Row hover: background: rgba(255,255,255,0.02), cursor: pointer
+Animate elements in this exact sequence with these exact delays:
 
----
+1. Logo/S icon:
+   initial={{ opacity: 0, scale: 0.8 }}
+   animate={{ opacity: 1, scale: 1 }}
+   transition={{ duration: 0.4, ease: [0.19,1,0.22,1], delay: 0 }}
 
-### 7. MASTERY TRACKING PAGE
+2. "DEBUGGING INTELLIGENCE" headline:
+   Use clipReveal variant — the text reveals from left to right like a 
+   curtain pulling back. This is the cinematic hero moment of this page.
+   initial={{ clipPath: 'inset(0 100% 0 0)' }}
+   animate={{ clipPath: 'inset(0 0% 0 0)' }}
+   transition={{ duration: 0.7, ease: [0.76,0,0.24,1], delay: 0.15 }}
 
-Current: Progress bars with %, benchmark line.
+3. "for Educators" subheading:
+   variants={fadeUp}, delay: 0.5
 
-New design:
-- Title: Bebas Neue, 52px
-- Container: background: #1A1A1A, border: 1px solid #2A2A2A, border-radius: 2px, padding: 32px
-- Section title "CONCEPT MASTERY TRACKING": Bebas Neue, 22px, letter-spacing: 2px
-- Subtitle: DM Sans, 13px, color: #555
-- Each concept row:
-  - Concept name: DM Sans, 14px, font-weight: 500, color: #F5F5F5
-  - Progress bar: height: 8px, background: #222, border-radius: 0
-    - Color by score: ≥80%: #4ADE80, 60-79%: #E8FF47, 40-59%: #E8B835, <40%: #FF6B35
-  - Score: Bebas Neue, 28px, matching bar color
-  - Benchmark marker: a small vertical notch on the bar (keep existing behavior)
-  - Target label (/ 70%): DM Sans, 11px, color: #444
-  - Row padding: 16px 0, border-bottom: 1px solid #1E1E1E
+4. Italic description line:
+   variants={fadeUp}, delay: 0.6
+
+5. The form card:
+   initial={{ opacity: 0, y: 24 }}
+   animate={{ opacity: 1, y: 0 }}
+   transition={{ duration: 0.5, ease: [0.19,1,0.22,1], delay: 0.35 }}
+
+6. Inside the form card, stagger these children with 0.06s between each:
+   - Sign In / Sign Up tabs
+   - Demo Teacher / Demo Student buttons
+   - EMAIL label + input
+   - PASSWORD label + input
+   - Sign In button
+   Each child: fadeUp variant
+
+7. Sign In button hover state:
+   whileHover={{ scale: 1.02 }}
+   whileTap={{ scale: 0.98 }}
+   transition={{ ...ease.spring }}
+   The scale is tiny — 1.02 not 1.1. Just enough to feel alive.
 
 ---
 
-### 8. HOMEWORK PAGE
+## STEP 4 — /classrooms PAGE ANIMATIONS
 
-Current: Assignment cards with progress bars, Open/Close badges.
+Find the Classrooms page component.
 
-New design:
-- Title: Bebas Neue, 52px
-- Container: background: #1A1A1A, border: 1px solid #2A2A2A, border-radius: 2px
-- "HOMEWORK QUESTIONS" section header: Bebas Neue, 18px, letter-spacing: 2px
-- "+ New Question" button:
-  - border: 1px solid #E8FF47
-  - color: #E8FF47
-  - background: transparent
-  - border-radius: 2px
-  - On hover: background: rgba(232,255,71,0.1)
-- Each assignment card:
-  - border-left: 3px solid #E8FF47 (open) or #2A2A2A (closed)
-  - background: #141414
-  - padding: 20px 24px
-  - margin-bottom: 1px (tight stacking)
-  - Assignment name: DM Sans, 16px, font-weight: 600, color: #F5F5F5
-  - "Open" badge: background: rgba(74,222,128,0.15), color: #4ADE80, border: 1px solid rgba(74,222,128,0.3), border-radius: 2px, font-size: 10px, letter-spacing: 1px
-  - Due / Submissions / Avg attempts: DM Sans, 12px, color: #555
-  - Bold submission numbers (18/34): color: #E8FF47
-  - Progress bar: height: 4px, background: #222, fill: #E8FF47, border-radius: 0
-  - Submission %: DM Sans, 11px, color: #888
-  - Filename: DM Sans, 11px, color: #E8FF47 (like a link), font-family: monospace
-  - "Close" button: border: 1px solid #2A2A2A, color: #555, border-radius: 2px, on hover: border-color: #FF6B35, color: #FF6B35
+1. "MY CLASSROOMS" title:
+   clipReveal — left to right curtain, duration 0.6s, delay 0.1s
 
----
+2. Subtitle text:
+   fadeUp, delay 0.3s
 
-### 9. STUDENTS PAGE (currently empty)
+3. "+ New Classroom" button:
+   fadeIn, delay 0.35s
+   whileHover: background color transition is already CSS — 
+   additionally add: whileHover={{ scale: 1.02 }}, whileTap={{ scale: 0.97 }}
 
-This page shows "Students" as the title but renders nothing. Add this structure:
-- Keep the header as-is (with new styling)
-- Add a placeholder state:
-  - Centered in the page
-  - A large Bebas Neue "0" in color: #1E1E1E (decorative and faint), font-size: 200px
-  - Below it: DM Sans, 14px, color: #444 — "No students have joined this classroom yet."
-  - Below that: DM Sans, 12px, color: #333 — "Share the classroom ID with your students to get started."
-  - The classroom ID shown in a monospace code box: background: #111, border: 1px solid #2A2A2A, color: #E8FF47, padding: 8px 16px, border-radius: 2px
+4. Classroom cards grid:
+   Wrap the grid container: variants={staggerContainer(0.08, 0.2)} 
+   initial="hidden" animate="show"
+   
+   Each classroom card:
+   variants={scaleIn}
+   whileHover={{ y: -4, borderColor: '#E8FF47' }}
+   transition for hover: { duration: 0.2, ease: [0.0,0.0,0.2,1] }
+   The card lifts 4px on hover — combined with the border color CSS 
+   transition already in place this makes it feel pressable and real.
+
+5. The watermark background letter on each card:
+   initial={{ opacity: 0 }}
+   animate={{ opacity: 1 }}
+   transition={{ duration: 0.8, delay: 0.4 }}
+   It should fade in after the card itself — ghostly reveal.
 
 ---
 
-## MICRO-INTERACTIONS & POLISH
+## STEP 5 — /overview PAGE ANIMATIONS
 
-Add these subtle animations via CSS (do not use JS animation libraries):
+This page has the most animations. Do them in this order.
 
-1. Page transitions: Add a fade-in on all main content areas:
-@keyframes fadeUp {
-  from { opacity: 0; transform: translateY(8px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-.page-content { animation: fadeUp 0.25s ease forwards; }
+### Stat Cards (the 4 metric cards at top)
 
-2. Card hover: All clickable cards get:
-transition: border-color 0.15s ease, background 0.15s ease;
+Wrap all 4 cards in: variants={staggerContainer(0.1, 0.15)} 
+                      initial="hidden" animate="show"
 
-3. Button hover: All buttons get:
-transition: all 0.15s ease;
+Each card: variants={fadeUp}
 
-4. Nav item active indicator:
-transition: border-left-color 0.15s ease, color 0.15s ease;
+Inside each stat card, the BIG NUMBER uses useCountUp:
 
-5. Progress bars: Animate fill on mount:
-@keyframes barFill {
-  from { width: 0; }
-  to { width: var(--bar-width); }
-}
-Use CSS custom properties to set width dynamically.
+  Total Debug Sessions (1847):
+    const count = useCountUp(1847, 1400, 200)
+    Render: {count.toLocaleString()}
+
+  Avg Fix Time (13):
+    const count = useCountUp(13, 800, 350)
+    Render: {count} <span>min</span>
+
+  Quiz Completion Rate (47):
+    const count = useCountUp(47, 900, 450)
+    Render: {count}<span>%</span>
+
+  At-Risk Students (4):
+    const count = useCountUp(4, 600, 550)
+    Render: {count}
+
+The delays are staggered so each number starts counting after the 
+previous one — creates a cascading data-loading feel.
+
+The sparkline charts inside each card:
+  initial={{ opacity: 0, scaleX: 0 }}
+  animate={{ opacity: 1, scaleX: 1 }}
+  transition={{ duration: 0.6, ease: [0.19,1,0.22,1], delay: 0.6 }}
+  style={{ transformOrigin: 'left center' }}
+Charts grow from left to right like they are being drawn live.
+
+### "Top Struggles This Week" panel
+
+Panel itself: fadeUp, delay 0.3s
+
+Each struggle row staggered with 0.08s between rows:
+  Wrap rows: variants={staggerContainer(0.08, 0.4)}
+  Each row: variants={fadeUp}
+
+Each row's progress bar:
+  Use useBarFill(targetPercent, rowIndex * 80 + 400)
+  Apply as: style={{ width: `${barWidth}%` }}
+  Add CSS: transition: width 0.8s cubic-bezier(0.19, 1, 0.22, 1)
+  Bars fill from left to right with staggered delays.
+  Row 1 (None/Null Handling 73%): delay 400ms
+  Row 2 (Async/Await 58%): delay 480ms
+  Row 3 (Missing try/except 45%): delay 560ms
+
+### "Students Needing Attention" panel
+
+Panel itself: fadeUp, delay 0.4s
+
+Each student row staggered 0.07s apart:
+  Wrap: variants={staggerContainer(0.07, 0.5)}
+  Each row: variants={slideInLeft}
+
+Each badge on the right:
+  initial={{ opacity: 0, scale: 0.85 }}
+  animate={{ opacity: 1, scale: 1 }}
+  transition={{ duration: 0.3, ease: [0.19,1,0.22,1], delay: rowIndex * 0.07 + 0.6 }}
+
+### "+12% vs last week" label under Total Debug Sessions:
+  initial={{ opacity: 0 }}
+  animate={{ opacity: 1 }}
+  transition={{ delay: 1.2, duration: 0.4 }}
+  This appears last — after the number has finished counting.
 
 ---
 
-## THINGS TO NEVER DO
+## STEP 6 — /heatmap PAGE ANIMATIONS
 
-- Do NOT add gradients to buttons or cards (solid colors only)
-- Do NOT use border-radius higher than 4px anywhere
-- Do NOT use box-shadow (use borders instead for depth)
-- Do NOT use purple, blue, or cyan anywhere
-- Do NOT add any new icons or illustration libraries
-- Do NOT use animation libraries (framer-motion etc.) unless already in the project
-- Do NOT change routing, data fetching, state management, or any .ts/.js logic files
-- Do NOT change file/component structure — only modify styles
+Find the Struggle Heatmap page component.
+
+1. "STRUGGLE HEATMAP" title: clipReveal, duration 0.65s, delay 0.1s
+
+2. Column headers row: fadeIn, delay 0.3s
+
+3. Each heatmap row staggered — this is the main event on this page:
+   Wrap all rows: variants={staggerContainer(0.1, 0.25)} 
+                  initial="hidden" animate="show"
+   
+   Each row:
+   variants={{
+     hidden: { opacity: 0, x: -20 },
+     show: { opacity: 1, x: 0, transition: { duration: 0.4, ease: [0.19,1,0.22,1] } }
+   }}
+   
+   Rows slide in from the left one by one. Row 1 arrives first, 
+   Row 5 arrives last. 100ms between each.
+
+4. The rank number (1, 2, 3, 4, 5) on each row:
+   As the row slides in, the number counts up from 0:
+   useCountUp(rankNumber, 300, rowIndex * 100 + 250)
+   1 → 2 → 3 → 4 → 5 ticking up as each row arrives.
+
+5. The attempt count number on each row:
+   useCountUp(attempts, 900, rowIndex * 100 + 300)
+   All 5 counts run simultaneously but with staggered starts.
+
+6. The crash % on each row:
+   useCountUp(crashPercent, 700, rowIndex * 100 + 400)
+   Ticks up from 0 to 73%, 58%, 45%, 34%, 28% in sequence.
+
+7. Each row's bar:
+   useBarFill(severityPercent, rowIndex * 100 + 300)
+   CSS: transition: width 0.9s cubic-bezier(0.19, 1, 0.22, 1)
+   Bars draw left to right as rows appear.
+
+8. Row hover (already styled in CSS):
+   Add: whileHover={{ x: 4 }}
+   transition: { duration: 0.15, ease: [0.0,0.0,0.2,1] }
+   The entire row nudges 4px right on hover — makes the table 
+   feel interactive and selectable.
 
 ---
 
-## HOW TO APPROACH THIS TASK
+## STEP 7 — /at-risk PAGE ANIMATIONS
 
-1. First, identify where global styles/CSS variables are defined (likely a globals.css, index.css, or theme file). Update all color and font variables there first.
-2. Then go screen by screen in this order: Auth → Classrooms → Sidebar → Header → Overview → Heatmap → Mastery → Homework → Students.
-3. For each screen, find the component file, update className styles or CSS.
-4. If the project uses Tailwind: replace utility classes with the new palette. If it uses CSS modules or styled-components: update the style definitions directly.
-5. After each screen, verify nothing is broken functionally.
-6. Do a final pass to ensure font imports are loading, all cyan/blue has been replaced, and the grid background is showing correctly on all pages.
+Find the At-Risk Students page component.
+Note: from the screenshots this page may currently be empty or minimal.
+Apply these regardless — they will activate when data renders.
+
+1. "AT-RISK STUDENTS" title: clipReveal, delay 0.1s
+
+2. If there is a filter/tab bar at the top: fadeIn, delay 0.25s
+
+3. Each student card/row:
+   Wrap container: variants={staggerContainer(0.09, 0.2)}
+   Each card: 
+   variants={{
+     hidden: { opacity: 0, y: 20 },
+     show: { opacity: 1, y: 0, 
+             transition: { duration: 0.4, ease: [0.19,1,0.22,1] } }
+   }}
+
+4. The badge on each student (1-on-1 recommended / Quiz not started / 
+   Below 40% quiz rate):
+   initial={{ opacity: 0, scale: 0.8 }}
+   animate={{ opacity: 1, scale: 1 }}
+   transition={{ duration: 0.25, ease: [0.19,1,0.22,1], 
+                 delay: cardIndex * 0.09 + 0.4 }}
+
+5. If there is a "requires intervention" count number anywhere:
+   useCountUp(count, 600, 200)
+
+6. Student card hover:
+   whileHover={{ y: -2, borderColor: '#FF6B35' }}
+   transition={{ duration: 0.15 }}
+   Cards lift slightly and border goes orange on hover — 
+   reinforcing the urgency signal.
+
+---
+
+## STEP 8 — /student PAGE ANIMATIONS
+
+Find the Student onboarding page (/student).
+
+1. "WELCOME, DEMO STUDENT" title:
+   Split into two parts:
+   - "WELCOME," — fadeUp, delay 0.1s
+   - "DEMO STUDENT" (the yellow part) — clipReveal left to right, delay 0.3s
+   This makes the name feel like it was revealed/identified.
+
+2. Subtitle "Follow these 3 steps...": fadeUp, delay 0.5s
+
+3. Each step card staggered:
+   Wrap: variants={staggerContainer(0.12, 0.4)}
+   Each step card:
+   variants={{
+     hidden: { opacity: 0, x: -32 },
+     show: { opacity: 1, x: 0, 
+             transition: { duration: 0.45, ease: [0.19,1,0.22,1] } }
+   }}
+   Steps slide in from left one after another — 
+   Step 1 arrives, then Step 2, then Step 3. Like a checklist populating.
+
+4. The step number badge (yellow square with 1/2/3):
+   As each step card arrives, the number inside pops in:
+   initial={{ scale: 0, rotate: -10 }}
+   animate={{ scale: 1, rotate: 0 }}
+   transition={{ ...ease.spring, delay: stepIndex * 0.12 + 0.5 }}
+
+5. The code block (JSON config display):
+   initial={{ opacity: 0 }}
+   animate={{ opacity: 1 }}
+   transition={{ delay: 0.9, duration: 0.5 }}
+   Appears last — like the terminal is loading it.
+
+6. "Save ID" button:
+   whileHover={{ scale: 1.03 }}
+   whileTap={{ scale: 0.97 }}
+   transition={{ ...ease.spring }}
+
+---
+
+## STEP 9 — /homework PAGE ANIMATIONS
+
+Find the Homework page component.
+
+1. "HOMEWORK" title: clipReveal, delay 0.1s
+
+2. "HOMEWORK QUESTIONS" section header + subtitle: fadeUp, delay 0.25s
+
+3. "+ New Question" button: fadeIn, delay 0.3s
+
+4. Each assignment card staggered:
+   Wrap: variants={staggerContainer(0.1, 0.3)}
+   Each card:
+   variants={{
+     hidden: { opacity: 0, y: 16 },
+     show: { opacity: 1, y: 0, 
+             transition: { duration: 0.4, ease: [0.19,1,0.22,1] } }
+   }}
+
+5. Inside each card, the submission count (18/34, 27/34):
+   The bold colored number animates:
+   useCountUp(submissionCount, 700, cardIndex * 100 + 400)
+   useCountUp(totalCount, 400, cardIndex * 100 + 200)
+   Both numbers count up — total first, then submissions fill in.
+
+6. The submission % text (53% submitted, 79% submitted):
+   useCountUp(percent, 700, cardIndex * 100 + 450)
+   Renders as: {count}% submitted
+
+7. Each card's progress bar:
+   useBarFill(submissionPercent, cardIndex * 100 + 350)
+   CSS: transition: width 1s cubic-bezier(0.19, 1, 0.22, 1)
+   Bar fills after card appears.
+
+8. The OPEN badge on each card:
+   initial={{ opacity: 0, x: 8 }}
+   animate={{ opacity: 1, x: 0 }}
+   transition={{ delay: cardIndex * 0.1 + 0.5, duration: 0.25 }}
+   Slides in from the right.
+
+9. Assignment card hover:
+   whileHover={{ y: -3 }}
+   transition={{ duration: 0.18, ease: [0.0,0.0,0.2,1] }}
+
+---
+
+## GLOBAL RULES FOR ALL ANIMATIONS
+
+### Performance rules — follow these exactly:
+- Every motion.div that animates position MUST have: style={{ willChange: 'transform' }}
+  Add this only to elements that actually move (not fade-only elements)
+- Never animate width/height directly — use scaleX/scaleY or CSS transitions 
+  for bars and panels (exception: progress bars use CSS transition on width, 
+  this is fine and intentional)
+- Never use motion on elements that repeat in a list of more than 20 items
+  (if a student list has 30+ rows, animate only the container fadeIn, 
+  not each individual row)
+
+### Accessibility:
+Wrap all animation logic with a prefers-reduced-motion check.
+In your animations.ts file add at the top:
+  export const prefersReducedMotion = 
+    typeof window !== 'undefined' 
+    ? window.matchMedia('(prefers-reduced-motion: reduce)').matches 
+    : false
+
+Then in every component that uses framer-motion variants:
+  const shouldAnimate = !prefersReducedMotion
+  initial={shouldAnimate ? "hidden" : false}
+  animate={shouldAnimate ? "show" : false}
+
+### Timing rules — never deviate:
+- No single animation duration exceeds 900ms
+- No entrance delay exceeds 800ms from page load
+- Stagger between sibling items: 60ms to 120ms (never more)
+- Counter animations: 600ms to 1400ms depending on size of number
+- Page transition in: exactly 250ms
+- Page transition out: exactly 180ms
+- Hover responses: 120ms to 200ms maximum
+- Spring animations: stiffness 400 damping 30 (snap) or 200/25 (slug)
+
+### What to NEVER animate:
+- Do NOT animate the sidebar itself sliding in/out
+- Do NOT animate the top header bar
+- Do NOT animate text that is longer than one line (paragraph text)
+- Do NOT add any looping/idle animations anywhere
+- Do NOT add scroll-triggered animations (everything animates on mount)
+- Do NOT animate color changes with framer-motion (use CSS transition for color)
+- Do NOT add any animation to form inputs themselves (labels, placeholders)
+- Do NOT use AnimatePresence on anything except page transitions and 
+  conditional renders (like modals, dropdowns if they exist)
+
+---
+
+## EXECUTION ORDER
+
+Do these in this exact sequence, one file at a time:
+
+1. Create src/lib/animations.ts with full content from STEP 0
+2. Install framer-motion if not present, verify import works
+3. Find and wrap the root layout with AnimatePresence page transition (STEP 1)
+4. Animate Sidebar component (STEP 2) — test the layoutId indicator slides
+5. Animate /auth page (STEP 3)
+6. Animate /classrooms page (STEP 4)
+7. Animate /overview page (STEP 5) — most complex, do stat cards first, 
+   then struggles panel, then students panel
+8. Animate /heatmap page (STEP 6)
+9. Animate /at-risk page (STEP 7)
+10. Animate /student page (STEP 8)
+11. Animate /homework page (STEP 9)
+12. Final check: open every page, verify no animation is janky or 
+    overlapping with another, verify numbers count up correctly, 
+    verify bars fill correctly, verify page transitions work on 
+    every route change
+13. Check browser console for any framer-motion warnings and fix them
+
+Do not proceed to the next page until the current page's animations 
+are confirmed working correctly.

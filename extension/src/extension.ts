@@ -105,8 +105,27 @@ export function activate(context: vscode.ExtensionContext) {
             const fileUri = vscode.Uri.file(filePath);
 
             // 2. Build the Python file content — question as # comments at top
+            // Word-wrap long lines at ~70 chars so nothing gets truncated
+            const wrapLine = (line: string, maxLen: number = 68): string[] => {
+                if (line.length <= maxLen) { return [line]; }
+                const words = line.split(' ');
+                const lines: string[] = [];
+                let current = '';
+                for (const word of words) {
+                    if (current.length + word.length + 1 > maxLen && current.length > 0) {
+                        lines.push(current);
+                        current = word;
+                    } else {
+                        current = current ? current + ' ' + word : word;
+                    }
+                }
+                if (current) { lines.push(current); }
+                return lines;
+            };
+
             const commentedBody = question.body
                 .split('\n')
+                .flatMap((line: string) => wrapLine(line))
                 .map((line: string) => `# ${line}`)
                 .join('\n');
 

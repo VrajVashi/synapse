@@ -57,8 +57,8 @@
         },
         "synapse.apiEndpoint": {
           "type": "string",
-          "default": "https://hcx07zkbfd.execute-api.ap-south-1.amazonaws.com/prod",
-          "description": "Synapse API Gateway endpoint"
+          "default": "http://localhost:3001",
+          "description": "Synapse API endpoint (local backend or deployed API Gateway)"
         },
         "synapse.enablePredictiveWarnings": {
           "type": "boolean",

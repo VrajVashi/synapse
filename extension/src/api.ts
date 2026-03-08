@@ -4,9 +4,10 @@ import { DebugSession } from './sessionRecorder';
 const BASE_URL_CONFIG_KEY = 'synapse.apiEndpoint';
 
 export class SynapseApi {
-    private getBase(): string {
+    public getBase(): string {
         const config = vscode.workspace.getConfiguration('synapse');
-        return config.get<string>(BASE_URL_CONFIG_KEY) || '';
+        const base = config.get<string>('apiEndpoint') || '';
+        return base;
     }
 
     async recordSession(session: DebugSession): Promise<void> {
@@ -21,15 +22,16 @@ export class SynapseApi {
 
     async getSessions(studentId: string): Promise<DebugSession[]> {
         const base = this.getBase();
-        if (!base) { return []; }
+        if (!base) { return getHardcodedReplaySessions(); }
 
         try {
             const response = await fetch(`${base}/sessions?studentId=${encodeURIComponent(studentId)}`);
-            if (!response.ok) { return []; }
+            if (!response.ok) { return getHardcodedReplaySessions(); }
             const data = await response.json() as { sessions: DebugSession[] };
-            return data.sessions || [];
+            const sessions = data.sessions || [];
+            return sessions.length > 0 ? sessions : getHardcodedReplaySessions();
         } catch {
-            return [];
+            return getHardcodedReplaySessions();
         }
     }
 
@@ -90,17 +92,28 @@ export class SynapseApi {
         cohortContext?: { crashRate: number; avgFixMinutes: number };
     }): Promise<AIAnalysisResult | null> {
         const base = this.getBase();
-        if (!base) { return null; }
+        if (!base) {
+            console.log('[Synapse API] No API endpoint configured — set synapse.apiEndpoint in settings');
+            return null;
+        }
 
         try {
+            console.log(`[Synapse API] POST ${base}/analyze (errorType: ${request.errorType})`);
             const response = await fetch(`${base}/analyze`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(request),
             });
-            if (!response.ok) { return null; }
-            return await response.json() as AIAnalysisResult;
-        } catch {
+            if (!response.ok) {
+                const errText = await response.text();
+                console.error(`[Synapse API] /analyze returned ${response.status}: ${errText}`);
+                return null;
+            }
+            const result = await response.json() as AIAnalysisResult;
+            console.log('[Synapse API] /analyze response received:', JSON.stringify(result).substring(0, 200));
+            return result;
+        } catch (err) {
+            console.error('[Synapse API] /analyze fetch failed:', err);
             return null;
         }
     }
@@ -113,7 +126,9 @@ export class SynapseApi {
             const response = await fetch(`${base}/classroom/${encodeURIComponent(classroomId)}/homework`);
             if (!response.ok) { return MOCK_HW_QUESTIONS; }
             const data = await response.json() as { questions: HWQuestion[] };
-            return data.questions || [];
+            const questions = data.questions || [];
+            // If backend returns empty, fall back to mock for demo
+            return questions.length > 0 ? questions : MOCK_HW_QUESTIONS;
         } catch {
             return MOCK_HW_QUESTIONS;
         }
@@ -347,4 +362,137 @@ function getHardcodedQuiz(errorType: string): QuizQuestion[] {
     };
 
     return quizzes[errorType] || quizzes.none_handling;
+}
+
+// ─── Hardcoded Replay Sessions (matches test.py) ──────────────────────────
+
+function getHardcodedReplaySessions(): DebugSession[] {
+    const now = Date.now();
+    return [
+        {
+            sessionId: 's_demo_none_handling',
+            studentId: 'demo-student',
+            filePath: 'test.py',
+            errorType: 'none_handling',
+            startTime: new Date(now - 28 * 60_000).toISOString(),   // 28 min ago
+            resolved: true,
+            totalDurationSeconds: 480,                              // 8 min to fix
+            attempts: [
+                {
+                    attemptNumber: 1,
+                    timestamp: new Date(now - 28 * 60_000).toISOString(),
+                    filePath: 'test.py',
+                    errorType: 'none_handling',
+                    codeSnapshot: 'result = db.get("key")\nprint(result.name)',
+                    resolved: false,
+                    durationSeconds: 0
+                },
+                {
+                    attemptNumber: 2,
+                    timestamp: new Date(now - 24 * 60_000).toISOString(),
+                    filePath: 'test.py',
+                    errorType: 'none_handling',
+                    codeSnapshot: 'result = db.get("key")\nif result:\n    print(result.name)',
+                    resolved: false,
+                    durationSeconds: 240
+                },
+                {
+                    attemptNumber: 3,
+                    timestamp: new Date(now - 20 * 60_000).toISOString(),
+                    filePath: 'test.py',
+                    errorType: 'none_handling',
+                    codeSnapshot: 'result = db.get("key")\nif result is not None:\n    print(result.name)\nelse:\n    print("Key not found")',
+                    resolved: true,
+                    durationSeconds: 480
+                }
+            ]
+        },
+        {
+            sessionId: 's_demo_try_except',
+            studentId: 'demo-student',
+            filePath: 'test.py',
+            errorType: 'try_except',
+            startTime: new Date(now - 18 * 60_000).toISOString(),   // 18 min ago
+            resolved: true,
+            totalDurationSeconds: 300,                              // 5 min to fix
+            attempts: [
+                {
+                    attemptNumber: 1,
+                    timestamp: new Date(now - 18 * 60_000).toISOString(),
+                    filePath: 'test.py',
+                    errorType: 'try_except',
+                    codeSnapshot: 'data = json.loads(input_string)',
+                    resolved: false,
+                    durationSeconds: 0
+                },
+                {
+                    attemptNumber: 2,
+                    timestamp: new Date(now - 13 * 60_000).toISOString(),
+                    filePath: 'test.py',
+                    errorType: 'try_except',
+                    codeSnapshot: 'try:\n    data = json.loads(input_string)\nexcept json.JSONDecodeError:\n    data = {}',
+                    resolved: true,
+                    durationSeconds: 300
+                }
+            ]
+        },
+        {
+            sessionId: 's_demo_async_await',
+            studentId: 'demo-student',
+            filePath: 'test.py',
+            errorType: 'async_await',
+            startTime: new Date(now - 12 * 60_000).toISOString(),   // 12 min ago
+            resolved: false,
+            totalDurationSeconds: 720,                              // 12 min, still active
+            attempts: [
+                {
+                    attemptNumber: 1,
+                    timestamp: new Date(now - 12 * 60_000).toISOString(),
+                    filePath: 'test.py',
+                    errorType: 'async_await',
+                    codeSnapshot: 'def my_function():\n    await some_async_call()',
+                    resolved: false,
+                    durationSeconds: 0
+                },
+                {
+                    attemptNumber: 2,
+                    timestamp: new Date(now - 7 * 60_000).toISOString(),
+                    filePath: 'test.py',
+                    errorType: 'async_await',
+                    codeSnapshot: 'def my_function():\n    result = some_async_call()\n    # still not using async def',
+                    resolved: false,
+                    durationSeconds: 300
+                }
+            ]
+        },
+        {
+            sessionId: 's_demo_list_ops',
+            studentId: 'demo-student',
+            filePath: 'test.py',
+            errorType: 'list_ops',
+            startTime: new Date(now - 5 * 60_000).toISOString(),    // 5 min ago
+            resolved: true,
+            totalDurationSeconds: 180,                              // 3 min to fix
+            attempts: [
+                {
+                    attemptNumber: 1,
+                    timestamp: new Date(now - 5 * 60_000).toISOString(),
+                    filePath: 'test.py',
+                    errorType: 'list_ops',
+                    codeSnapshot: 'items = [1, 2, 3]\nx = items[5]',
+                    resolved: false,
+                    durationSeconds: 0
+                },
+                {
+                    attemptNumber: 2,
+                    timestamp: new Date(now - 2 * 60_000).toISOString(),
+                    filePath: 'test.py',
+                    errorType: 'list_ops',
+                    codeSnapshot: 'items = [1, 2, 3]\nif len(items) > 5:\n    x = items[5]\nelse:\n    x = None',
+                    resolved: true,
+                    durationSeconds: 180
+                }
+            ]
+        }
+    ];
 }

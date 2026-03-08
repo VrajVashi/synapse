@@ -1,12 +1,12 @@
-const { BedrockRuntimeClient, InvokeModelCommand } = require('@aws-sdk/client-bedrock-runtime');
+const Groq = require('groq-sdk');
 
-const bedrock = new BedrockRuntimeClient({ region: process.env.BEDROCK_REGION || 'ap-south-1' });
-const MODEL_ID = process.env.BEDROCK_MODEL_ID || 'anthropic.claude-haiku-4-5-20251001-v1:0';
+const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
+const GROQ_MODEL = process.env.GROQ_MODEL || 'llama-3.3-70b-versatile';
 
 /**
  * POST /analyze
  *
- * Tier 3 — AI-powered code analysis using AWS Bedrock (Claude Haiku 4.5).
+ * Tier 3 — AI-powered code analysis using Groq (Llama 3.3 70B).
  * Called by the VS Code extension when local analysis (Tier 1+2) detects an
  * issue that needs deeper explanation or predictive analysis.
  *
@@ -92,25 +92,19 @@ Respond ONLY with this JSON structure (no markdown, no code fences):
   "confidence": 85
 }`;
 
-        // Call Bedrock Claude
-        const bedrockResponse = await bedrock.send(new InvokeModelCommand({
-            modelId: MODEL_ID,
-            contentType: 'application/json',
-            accept: 'application/json',
-            body: JSON.stringify({
-                anthropic_version: 'bedrock-2023-05-31',
-                max_tokens: 512,
-                temperature: 0.3,
-                system: systemPrompt,
-                messages: [
-                    { role: 'user', content: userPrompt }
-                ],
-            }),
-        }));
+        // Call Groq API
+        const chatCompletion = await groq.chat.completions.create({
+            messages: [
+                { role: 'system', content: systemPrompt },
+                { role: 'user', content: userPrompt },
+            ],
+            model: GROQ_MODEL,
+            temperature: 0.3,
+            max_tokens: 512,
+            response_format: { type: 'json_object' },
+        });
 
-        // Parse Bedrock response
-        const responseBody = JSON.parse(new TextDecoder().decode(bedrockResponse.body));
-        const aiText = responseBody.content?.[0]?.text || '{}';
+        const aiText = chatCompletion.choices?.[0]?.message?.content || '{}';
 
         let aiResult;
         try {
@@ -134,24 +128,12 @@ Respond ONLY with this JSON structure (no markdown, no code fences):
                 fixSuggestion: aiResult.fixSuggestion || '',
                 conceptsToReview: aiResult.conceptsToReview || [],
                 confidence: aiResult.confidence || 0,
-                modelId: MODEL_ID,
+                modelId: GROQ_MODEL,
             }),
         };
 
     } catch (err) {
         console.error('aiAnalyzer error:', err);
-
-        // Specific error for Bedrock access issues
-        if (err.name === 'AccessDeniedException') {
-            return {
-                statusCode: 403,
-                headers,
-                body: JSON.stringify({
-                    error: 'Bedrock model access not enabled. Enable Claude in the AWS Console.',
-                    details: err.message,
-                }),
-            };
-        }
 
         return {
             statusCode: 500,

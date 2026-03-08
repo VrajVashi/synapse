@@ -31,7 +31,7 @@ const COHORT_DATA: Record<string, { crashRate: number; avgFixMinutes: number; co
 export class SynapseAnalyzer {
     private debounceTimer: NodeJS.Timeout | undefined;
     private readonly debounceMs = 800;
-    private aiCooldowns = new Map<string, number>(); // per-file cooldown for Bedrock calls
+    private aiCooldowns = new Map<string, number>(); // per-file cooldown for AI calls
     private readonly aiCooldownMs = 10000; // 10s between AI calls per file
 
     constructor(
@@ -82,25 +82,34 @@ export class SynapseAnalyzer {
         if (issues.length > 0) {
             this.sessionRecorder.onIssuesDetected(doc.uri.fsPath, issues);
 
-            // Tier 3 — AI analysis via Bedrock (async, non-blocking)
+            // Tier 3 — AI analysis via Groq (async, non-blocking)
             this.requestAIAnalysis(doc, issues, text);
         }
     }
 
     /**
-     * Tier 3: Call AWS Bedrock for AI-powered analysis.
+     * Tier 3: Call Groq for AI-powered analysis.
      * Only fires for the first issue in the file, with a per-file cooldown.
      */
     private async requestAIAnalysis(doc: vscode.TextDocument, issues: SynapseIssue[], code: string) {
-        if (!this.api) { return; }
+        if (!this.api) {
+            console.log('[Synapse AI] No API configured — skipping Tier 3 analysis');
+            return;
+        }
 
         const config = vscode.workspace.getConfiguration('synapse');
-        if (!config.get<boolean>('enablePredictiveWarnings', true)) { return; }
+        if (!config.get<boolean>('enablePredictiveWarnings', true)) {
+            console.log('[Synapse AI] Predictive warnings disabled in settings');
+            return;
+        }
 
         const filePath = doc.uri.fsPath;
         const now = Date.now();
         const lastCall = this.aiCooldowns.get(filePath) || 0;
-        if (now - lastCall < this.aiCooldownMs) { return; }
+        if (now - lastCall < this.aiCooldownMs) {
+            console.log(`[Synapse AI] Cooldown active for ${filePath} (${Math.round((this.aiCooldownMs - (now - lastCall)) / 1000)}s remaining)`);
+            return;
+        }
         this.aiCooldowns.set(filePath, now);
 
         // Pick the highest-severity issue for AI analysis
@@ -109,6 +118,7 @@ export class SynapseAnalyzer {
 
         try {
             const studentId = config.get<string>('studentId') || 'anonymous';
+            console.log(`[Synapse AI] Calling Groq for ${topIssue.errorType} at line ${topIssue.line} (${filePath})`);
             const result = await this.api.analyzeWithAI({
                 code: code.substring(0, 3000),
                 errorType: topIssue.errorType,
@@ -120,6 +130,7 @@ export class SynapseAnalyzer {
             });
 
             if (result && result.explanation) {
+                console.log(`[Synapse AI] ✅ Got AI result: ${result.confidence}% confidence`);
                 // Enrich the diagnostic with AI analysis
                 const existingDiags = this.diagnosticCollection.get(doc.uri) || [];
                 const aiDiagnostic = new vscode.Diagnostic(
@@ -132,16 +143,18 @@ export class SynapseAnalyzer {
                     (result.conceptsToReview?.length ? `\n\n📚 Review: ${result.conceptsToReview.join(', ')}` : ''),
                     vscode.DiagnosticSeverity.Information
                 );
-                aiDiagnostic.source = 'Synapse AI (Bedrock)';
+                aiDiagnostic.source = 'Synapse AI (Groq)';
                 aiDiagnostic.code = {
                     value: topIssue.errorType,
                     target: vscode.Uri.parse(`command:synapse.showQuiz?${encodeURIComponent(JSON.stringify([topIssue.errorType]))}`)
                 };
 
                 this.diagnosticCollection.set(doc.uri, [...existingDiags, aiDiagnostic]);
+            } else {
+                console.log(`[Synapse AI] ⚠️ API returned null or no explanation`, result);
             }
-        } catch {
-            // AI analysis failed — Tier 1+2 diagnostics still show
+        } catch (err) {
+            console.error('[Synapse AI] ❌ AI analysis failed:', err);
         }
     }
 

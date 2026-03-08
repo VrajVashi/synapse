@@ -1,5 +1,11 @@
 const express = require('express');
 const cors = require('cors');
+const Groq = require('groq-sdk');
+
+// Groq client for Tier 3 AI analysis
+// Set GROQ_API_KEY in your environment: $env:GROQ_API_KEY="gsk_..."
+const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
+const GROQ_MODEL = process.env.GROQ_MODEL || 'llama-3.3-70b-versatile';
 
 const app = express();
 app.use(cors());
@@ -362,6 +368,7 @@ app.post('/classrooms/:id/join', (req, res) => {
 
 // Extension fetches this
 app.get('/classroom/:classroomId/homework', (req, res) => {
+    // Return homework assigned to this specific classroom + global (DEMO) assignments
     const hw = SEED.homework.filter(h => h.classroomId === req.params.classroomId || h.classroomId === 'DEMO');
     res.json({ questions: hw.filter(h => h.status === 'open') });
 });
@@ -397,57 +404,90 @@ app.post('/cohort/homework/:id/close', (req, res) => {
 });
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// ROUTES — AI Analysis (mocks AWS Bedrock — same response contract as prod)
+// ROUTES — AI Analysis (Tier 3 — Groq Llama 3.3 70B)
 // ═══════════════════════════════════════════════════════════════════════════════
 
-// Pre-baked AI responses per error type (mirrors what Bedrock Claude Haiku returns)
-const AI_RESPONSES = {
-    none_handling: {
-        explanation: 'This code calls `.attribute` on a value that can return None. When the query finds no result, Python raises AttributeError: \'NoneType\' object has no attribute \'name\'. This pattern causes crashes in 73% of similar student sessions.',
-        fixSuggestion: 'Add a None guard before accessing attributes:\n\nif result is None:\n    return "Not found"\nreturn result.name',
-        conceptsToReview: ['None Handling', 'Defensive Programming', 'dict.get() vs dict[]'],
-        confidence: 91,
-        modelId: 'anthropic.claude-3-haiku-20240307-v1:0',
-    },
-    async_await: {
-        explanation: 'The `await` keyword is used outside an `async def` function. This is a SyntaxError that crashes immediately — Python cannot execute coroutines in synchronous context.',
-        fixSuggestion: 'Add `async` to the enclosing function definition:\n\nasync def your_function():\n    result = await some_async_call()',
-        conceptsToReview: ['Async/Await Syntax', 'asyncio.run()', 'Coroutines vs Functions'],
-        confidence: 96,
-        modelId: 'anthropic.claude-3-haiku-20240307-v1:0',
-    },
-    try_except: {
-        explanation: 'This operation can raise an exception that isn\'t caught. File I/O, HTTP requests, and JSON parsing commonly fail in production — wrapping in try/except prevents crashes and gives users a useful error message.',
-        fixSuggestion: 'Wrap the risky operation:\n\ntry:\n    result = risky_operation()\nexcept (ValueError, IOError) as e:\n    print(f"Error: {e}")\n    result = None',
-        conceptsToReview: ['Exception Handling', 'try/except Blocks', 'Specific vs Bare except'],
-        confidence: 88,
-        modelId: 'anthropic.claude-3-haiku-20240307-v1:0',
-    },
-    list_ops: {
-        explanation: 'Accessing a list with a fixed index without checking its length can raise IndexError. If the list has fewer elements than expected (e.g. empty API response), your code crashes.',
-        fixSuggestion: 'Check length before accessing:\n\nif len(items) > 0:\n    first = items[0]\nelse:\n    first = None\n\n# Or use: first = items[0] if items else None',
-        conceptsToReview: ['List Indexing', 'IndexError Prevention', 'Defensive List Access'],
-        confidence: 83,
-        modelId: 'anthropic.claude-3-haiku-20240307-v1:0',
-    },
-    type_error: {
-        explanation: 'A TypeError occurs when an operation is applied to the wrong type — like adding a string and an integer, or calling a method on None. Python is dynamically typed, so these errors only appear at runtime.',
-        fixSuggestion: 'Add explicit type conversion:\n\n# Instead of: result = value + count\nresult = str(value) + str(count)  # or int(value) + int(count)\n\n# Always validate input types before operations.',
-        conceptsToReview: ['Python Type System', 'Type Casting', 'isinstance() Checks'],
-        confidence: 85,
-        modelId: 'anthropic.claude-3-haiku-20240307-v1:0',
-    },
-};
+app.post('/analyze', async (req, res) => {
+    try {
+        const { code, errorType, errorMessage, line, filePath } = req.body;
+        if (!code || !errorType) {
+            return res.status(400).json({ error: 'Missing required fields: code, errorType' });
+        }
 
-app.post('/analyze', (req, res) => {
-    const { errorType, errorMessage, code, studentId } = req.body;
+        const systemPrompt = `You are Synapse, an AI debugging tutor for bootcamp students learning Python. Your goal is NOT to just fix bugs — it's to help students UNDERSTAND their debugging patterns and learn the underlying concepts.
 
-    // Small simulated delay to mimic Bedrock API latency (makes it feel real)
-    setTimeout(() => {
-        const response = AI_RESPONSES[errorType] || AI_RESPONSES.none_handling;
-        console.log(`[Synapse AI] Analysis for ${studentId || 'anon'}: ${errorType} → ${response.confidence}% confidence`);
-        res.json(response);
-    }, 800 + Math.random() * 600); // 800ms–1400ms simulated latency
+Rules:
+- Be concise and educational (bootcamp student level)
+- Explain WHY the bug happens, not just how to fix it
+- Reference the specific line number
+- Suggest a fix but also explain the concept behind it
+- Mention related concepts the student should review
+- Keep explanations under 150 words
+- Return ONLY valid JSON, no markdown`;
+
+        const cohortContext = req.body.cohortContext
+            ? `\nCohort data: ${req.body.cohortContext.crashRate || 0}% of students crash on this pattern. Average fix time: ${req.body.cohortContext.avgFixMinutes || 0} minutes.`
+            : '';
+
+        const userPrompt = `Analyze this Python debugging issue and respond in JSON format:
+
+File: ${filePath || 'unknown.py'}
+Error type: ${errorType}
+Error at line: ${line || 'unknown'}
+Local analysis message: ${errorMessage || 'Issue detected'}
+${cohortContext}
+
+Code:
+\`\`\`python
+${(code || '').substring(0, 3000)}
+\`\`\`
+
+Respond ONLY with this JSON structure (no markdown, no code fences):
+{
+  "explanation": "Clear explanation of why this bug happens (2-3 sentences)",
+  "fixSuggestion": "The corrected code snippet (just the relevant lines)",
+  "conceptsToReview": ["concept1", "concept2"],
+  "confidence": 85
+}`;
+
+        const chatCompletion = await groq.chat.completions.create({
+            messages: [
+                { role: 'system', content: systemPrompt },
+                { role: 'user', content: userPrompt },
+            ],
+            model: GROQ_MODEL,
+            temperature: 0.3,
+            max_tokens: 512,
+            response_format: { type: 'json_object' },
+        });
+
+        const aiText = chatCompletion.choices?.[0]?.message?.content || '{}';
+
+        let aiResult;
+        try {
+            aiResult = JSON.parse(aiText);
+        } catch {
+            aiResult = {
+                explanation: aiText,
+                fixSuggestion: '',
+                conceptsToReview: [errorType.replace('_', ' ')],
+                confidence: 70,
+            };
+        }
+
+        console.log(`[Synapse] AI analysis complete for ${errorType} (${GROQ_MODEL})`);
+        res.json({
+            explanation: aiResult.explanation || 'Analysis could not be completed.',
+            fixSuggestion: aiResult.fixSuggestion || '',
+            conceptsToReview: aiResult.conceptsToReview || [],
+            confidence: aiResult.confidence || 0,
+            modelId: GROQ_MODEL,
+        });
+
+    } catch (err) {
+        console.error('[Synapse] AI analysis error:', err.message);
+        res.status(500).json({ error: 'AI analysis failed', details: err.message });
+    }
 });
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -463,6 +503,7 @@ app.listen(PORT, () => {
     console.log('  Cohort:     GET  /cohort/info|heatmap|at-risk|mastery|curriculum|stats|homework');
     console.log('  Sessions:   POST /sessions          GET /sessions?studentId=...');
     console.log('  Quiz:       POST /quiz/results');
+    console.log('  AI:         POST /analyze            (Groq Llama 3.3 70B)');
     console.log('  Classrooms: POST /classrooms         GET /classrooms');
     console.log('              POST /classrooms/:id/join');
     console.log('  Homework:   GET  /classroom/:id/homework');

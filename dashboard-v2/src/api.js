@@ -48,6 +48,8 @@ const MOCK = {
         { id: 'hw-002', title: 'Safe Dictionary Lookup', body: 'Write a function get_user_email(users, user_id)...', filename: 'hw_safe_dict_lookup.py', status: 'open', dueDate: '2026-03-08', submissionCount: 27, totalStudents: 34, avgAttempts: 2.1 },
     ],
     classrooms: [],
+    // homework is keyed by classroomId so it doesn't bleed across classrooms
+    homework: {},
 };
 
 // ─── Helper: fetch with fallback ─────────────────────────────────────────────
@@ -89,12 +91,23 @@ export const API = {
         return fetchWithFallback('/cohort/stats', MOCK.weeklyStats);
     },
 
-    async getHomework() {
-        return fetchWithFallback('/cohort/homework', MOCK.homework);
+    async getHomework(classroomId) {
+        const id = classroomId || 'default';
+        // Initialize empty list per classroom if not seen yet
+        if (!MOCK.homework[id]) MOCK.homework[id] = [];
+        try {
+            const res = await fetch(`${BASE_URL}/cohort/homework?classroomId=${encodeURIComponent(id)}`);
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            return await res.json();
+        } catch (e) {
+            console.warn(`[Synapse API] /cohort/homework failed (${e.message}), using local data.`);
+            return MOCK.homework[id];
+        }
     },
 
     // ── Homework mutations ───────────────────────────────────────────────────
     async createHomework(payload) {
+        const classroomId = payload.classroomId || 'default';
         try {
             const res = await fetch(`${BASE_URL}/cohort/homework`, {
                 method: 'POST',
@@ -117,7 +130,8 @@ export const API = {
                 totalStudents: MOCK.cohortInfo.totalStudents,
                 avgAttempts: 0,
             };
-            MOCK.homework.unshift(newQ);
+            if (!MOCK.homework[classroomId]) MOCK.homework[classroomId] = [];
+            MOCK.homework[classroomId].unshift(newQ);
             return newQ;
         }
     },
@@ -154,7 +168,9 @@ export const API = {
             console.warn(`[Synapse API] POST /classrooms failed (${e.message}), using local fallback.`);
             const prefix = (payload.name || 'CLASS').replace(/[^a-zA-Z0-9]/g, '').substring(0, 6).toUpperCase();
             const rand = Math.random().toString(36).substring(2, 6).toUpperCase();
-            const classroom = {
+            // Return the object only — do NOT push to MOCK.classrooms.
+            // The calling component owns the list state.
+            return {
                 id: `${prefix}-${new Date().getFullYear()}-${rand}`,
                 name: payload.name,
                 lang: payload.lang || 'python',
@@ -163,8 +179,6 @@ export const API = {
                 sessions: 0,
                 createdAt: Date.now(),
             };
-            MOCK.classrooms.push(classroom);
-            return classroom;
         }
     },
 

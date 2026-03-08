@@ -11,13 +11,7 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// Log every incoming request
-app.use((req, res, next) => {
-    console.log(`[${new Date().toLocaleTimeString()}] ${req.method} ${req.url}`);
-    next();
-});
-
-const PORT = 3001;
+const PORT = process.env.PORT || 3001;
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // IN-MEMORY STATE  (persists only while server is running — perfect for demos)

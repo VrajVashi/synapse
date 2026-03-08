@@ -1,13 +1,17 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { motion } from 'framer-motion';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../components/Toast';
 import { API } from '../api';
 import ParticleField from '../components/ParticleField';
 import AuroraBackground from '../components/AuroraBackground';
+import { staggerContainer, ease, prefersReducedMotion } from '../lib/animations';
 
-function StepItem({ number, title, children, status = 'upcoming', delay = 0 }) {
-    // status: 'completed', 'active', 'upcoming'
+const shouldAnimate = !prefersReducedMotion;
+const stepsStagger = staggerContainer(0.12, 0.4);
+
+function StepItem({ number, title, children, status = 'upcoming', delay = 0, index = 0 }) {
     const borderColor = status === 'completed' ? '#4ADE80' : status === 'active' ? '#E8FF47' : '#222';
     const badgeColor = status === 'completed' ? '#4ADE80' : '#E8FF47';
     const icon = status === 'completed' ? (
@@ -17,41 +21,40 @@ function StepItem({ number, title, children, status = 'upcoming', delay = 0 }) {
     );
 
     return (
-        <div
-            className="transition-all duration-150"
+        <motion.div
+            className="transition-colors duration-150"
             style={{
                 background: '#1A1A1A',
                 border: '1px solid #2A2A2A',
                 borderLeft: `3px solid ${borderColor}`,
                 borderRadius: '2px',
                 padding: '24px',
-                opacity: 0,
-                animation: `slide-up 0.5s cubic-bezier(0.22,1,0.36,1) ${delay}ms forwards`,
             }}
+            variants={{ hidden: { opacity: 0, x: -32 }, show: { opacity: 1, x: 0, transition: { duration: 0.45, ease: [0.19, 1, 0.22, 1] } } }}
             onMouseEnter={e => {
-                if (status !== 'completed') e.currentTarget.style.borderColor = '#E8FF47';
+                if (status !== 'completed') e.currentTarget.style.borderLeftColor = '#E8FF47';
             }}
             onMouseLeave={e => {
-                e.currentTarget.style.borderColor = '#2A2A2A';
                 e.currentTarget.style.borderLeftColor = borderColor;
             }}
         >
             <div className="flex gap-4 items-start">
-                {/* Step badge */}
-                <div className="shrink-0 flex items-center justify-center"
-                    style={{
-                        width: '32px', height: '32px',
-                        background: badgeColor,
-                        borderRadius: '2px',
-                    }}>
+                {/* Step badge — pops in with spring after card arrives */}
+                <motion.div
+                    className="shrink-0 flex items-center justify-center"
+                    style={{ width: '32px', height: '32px', background: badgeColor, borderRadius: '2px' }}
+                    initial={shouldAnimate ? { scale: 0, rotate: -10 } : false}
+                    animate={{ scale: 1, rotate: 0 }}
+                    transition={{ ...ease.spring, delay: index * 0.12 + 0.5 }}
+                >
                     {icon}
-                </div>
+                </motion.div>
                 <div className="flex-1 min-w-0">
                     <div style={{ fontFamily: 'var(--font-sans)', fontSize: '14px', fontWeight: 600, color: '#F5F5F5', marginBottom: '6px' }}>{title}</div>
                     {children}
                 </div>
             </div>
-        </div>
+        </motion.div>
     );
 }
 
@@ -122,10 +125,25 @@ export default function StudentPage() {
             </header>
 
             <main className="relative z-10 page-content" style={{ maxWidth: '640px', margin: '0 auto', padding: '56px 24px' }}>
-                <h1 className="mb-1.5" style={{ fontFamily: 'var(--font-display)', fontSize: '42px', letterSpacing: '2px', lineHeight: 1, color: '#F5F5F5' }}>
-                    WELCOME, <span style={{ color: '#E8FF47' }}>{(user?.name || 'Student').toUpperCase()}</span>
-                </h1>
-                <p className="mb-12" style={{ fontFamily: 'var(--font-sans)', fontSize: '14px', color: '#555' }}>Follow these 3 steps to connect to your classroom.</p>
+                {/* WELCOME headline — clipReveal */}
+                <div style={{ overflow: 'hidden' }}>
+                    <motion.h1
+                        className="mb-1.5"
+                        style={{ fontFamily: 'var(--font-display)', fontSize: '42px', letterSpacing: '2px', lineHeight: 1, color: '#F5F5F5' }}
+                        initial={shouldAnimate ? { clipPath: 'inset(0 100% 0 0)' } : false}
+                        animate={{ clipPath: 'inset(0 0% 0 0)' }}
+                        transition={{ duration: 0.6, ease: [0.76, 0, 0.24, 1], delay: 0.1 }}
+                    >
+                        WELCOME, <span style={{ color: '#E8FF47' }}>{(user?.name || 'Student').toUpperCase()}</span>
+                    </motion.h1>
+                </div>
+                <motion.p
+                    className="mb-12"
+                    style={{ fontFamily: 'var(--font-sans)', fontSize: '14px', color: '#555' }}
+                    initial={shouldAnimate ? { opacity: 0, y: 12 } : false}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.45, duration: 0.4, ease: [0.19, 1, 0.22, 1] }}
+                >Follow these 3 steps to connect to your classroom.</motion.p>
 
                 {/* Timeline connector */}
                 <div className="relative">
@@ -139,14 +157,20 @@ export default function StudentPage() {
                         }} />
                     </div>
 
-                    <div className="space-y-4 relative" style={{ zIndex: 1 }}>
-                        <StepItem number={1} title="Install the Synapse VS Code Extension" status={step1Status} delay={100}>
+                    <motion.div
+                        className="space-y-4 relative"
+                        style={{ zIndex: 1 }}
+                        variants={stepsStagger}
+                        initial={shouldAnimate ? 'hidden' : false}
+                        animate="show"
+                    >
+                        <StepItem number={1} title="Install the Synapse VS Code Extension" status={step1Status} index={0}>
                             <p style={{ fontFamily: 'var(--font-sans)', fontSize: '12px', color: '#888', lineHeight: 1.6 }}>
                                 Open VS Code, go to Extensions (Ctrl+Shift+X), and search for <span style={{ color: '#F5F5F5', fontWeight: 500 }}>Synapse Debugging Intelligence</span>.
                             </p>
                         </StepItem>
 
-                        <StepItem number={2} title="Enter Your Classroom ID" status={step2Status} delay={200}>
+                        <StepItem number={2} title="Enter Your Classroom ID" status={step2Status} index={1}>
                             <p className="mb-3" style={{ fontFamily: 'var(--font-sans)', fontSize: '12px', color: '#888', lineHeight: 1.6 }}>
                                 Ask your instructor for the classroom ID, then paste it below and in your VS Code settings.
                             </p>
@@ -161,31 +185,41 @@ export default function StudentPage() {
                                 onBlur={e => e.target.style.borderColor = '#2A2A2A'}
                             />
                             <div className="flex items-center gap-3 mt-3">
-                                <button onClick={handleSave}
-                                    className="px-5 py-2 text-sm font-semibold transition-all"
-                                    style={{ background: '#E8FF47', color: '#0D0D0D', borderRadius: '2px', border: 'none', fontWeight: 600 }}>
+                                <motion.button
+                                    onClick={handleSave}
+                                    className="px-5 py-2 text-sm font-semibold"
+                                    style={{ background: '#E8FF47', color: '#0D0D0D', borderRadius: '2px', border: 'none', fontWeight: 600, willChange: 'transform' }}
+                                    whileHover={{ scale: 1.04 }}
+                                    whileTap={{ scale: 0.96 }}
+                                    transition={ease.spring}
+                                >
                                     Save ID
-                                </button>
+                                </motion.button>
                                 {saved && (
-                                    <span className="animate-fade-in"
+                                    <motion.span
                                         style={{
                                             fontSize: '10px', fontWeight: 600, fontFamily: 'var(--font-sans)',
                                             letterSpacing: '1px', textTransform: 'uppercase',
                                             padding: '3px 8px', borderRadius: '2px',
                                             background: 'rgba(74,222,128,0.12)', color: '#4ADE80',
                                             border: '1px solid rgba(74,222,128,0.25)',
-                                        }}>
+                                        }}
+                                        initial={{ opacity: 0, x: -8 }}
+                                        animate={{ opacity: 1, x: 0 }}
+                                        transition={{ duration: 0.25, ease: [0.19, 1, 0.22, 1] }}
+                                    >
                                         Saved
-                                    </span>
+                                    </motion.span>
                                 )}
                             </div>
                         </StepItem>
 
-                        <StepItem number={3} title="Paste the ID in VS Code Settings" status={step3Status} delay={300}>
+                        <StepItem number={3} title="Paste the ID in VS Code Settings" status={step3Status} index={2}>
                             <p className="mb-3" style={{ fontFamily: 'var(--font-sans)', fontSize: '12px', color: '#888', lineHeight: 1.6 }}>
                                 Open VS Code settings (Ctrl+,), search for <span style={{ color: '#F5F5F5', fontWeight: 500 }}>synapse.cohortId</span>, and paste your classroom ID.
                             </p>
-                            <div className="flex items-center justify-between"
+                            <motion.div
+                                className="flex items-center justify-between"
                                 style={{
                                     background: '#0D0D0D',
                                     border: `1px solid ${copied ? 'rgba(74,222,128,0.4)' : '#222'}`,
@@ -195,7 +229,11 @@ export default function StudentPage() {
                                     fontSize: '12px',
                                     color: '#E8FF47',
                                     transition: 'border-color 0.15s',
-                                }}>
+                                }}
+                                initial={shouldAnimate ? { opacity: 0 } : false}
+                                animate={{ opacity: 1 }}
+                                transition={{ delay: 0.9, duration: 0.4 }}
+                            >
                                 <span>"synapse.cohortId": "{classroomId || 'PYBOOT-2026-XK3F'}"</span>
                                 <button onClick={handleCopy}
                                     className="shrink-0 ml-3 transition-all"
@@ -209,15 +247,15 @@ export default function StudentPage() {
                                     }}>
                                     {copied ? '✓ Copied' : 'Copy'}
                                 </button>
-                            </div>
+                            </motion.div>
                         </StepItem>
 
-                        <StepItem number="✓" title="You're all set" status={saved ? 'completed' : 'upcoming'} delay={400}>
+                        <StepItem number="✓" title="You're all set" status={saved ? 'completed' : 'upcoming'} index={3}>
                             <p style={{ fontFamily: 'var(--font-sans)', fontSize: '12px', color: '#888', lineHeight: 1.6 }}>
                                 Open any <span style={{ color: '#F5F5F5', fontWeight: 500 }}>.py</span> file in VS Code. Synapse will automatically track your debugging sessions and your instructor can see your progress.
                             </p>
                         </StepItem>
-                    </div>
+                    </motion.div>
                 </div>
             </main>
         </div>

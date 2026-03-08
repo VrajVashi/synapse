@@ -24,6 +24,8 @@ export default function DashboardPage() {
     const [searchParams] = useSearchParams();
 
     const [activeView, setActiveView] = useState(searchParams.get('view') || 'overview');
+    const classroomId = searchParams.get('classroomId') || 'default';
+    const classroomName = searchParams.get('classroomName') || 'My Classroom';
     const [data, setData] = useState(null);
     const [lastUpdated, setLastUpdated] = useState(null);
     const [secondsAgo, setSecondsAgo] = useState(0);
@@ -39,7 +41,7 @@ export default function DashboardPage() {
     // Fetch all cohort data
     const fetchAll = useCallback(async () => {
         const [cohort, stats, heatmap, atRisk, mastery, curriculum, homework] = await Promise.all([
-            API.getCohortInfo(), API.getWeeklyStats(), API.getHeatmap(), API.getAtRisk(), API.getMastery(), API.getCurriculum(), API.getHomework(),
+            API.getCohortInfo(), API.getWeeklyStats(), API.getHeatmap(), API.getAtRisk(), API.getMastery(), API.getCurriculum(), API.getHomework(classroomId),
         ]);
         setData({ cohort, stats, heatmap, atRisk, mastery, curriculum, homework });
         setLastUpdated(Date.now());
@@ -59,15 +61,15 @@ export default function DashboardPage() {
 
     const createHw = async () => {
         if (!hwTitle.trim() || !hwBody.trim()) return;
-        await API.createHomework({ classroomId: 'DEMO', title: hwTitle, body: hwBody, dueDate: hwDue });
-        const hw = await API.getHomework();
+        await API.createHomework({ classroomId, title: hwTitle, body: hwBody, dueDate: hwDue });
+        const hw = await API.getHomework(classroomId);
         setData(d => ({ ...d, homework: hw }));
         setHwModal(false); setHwTitle(''); setHwBody(''); setHwDue('');
     };
 
     const closeHw = async (id) => {
         await API.closeHomework(id);
-        const hw = await API.getHomework();
+        const hw = await API.getHomework(classroomId);
         setData(d => ({ ...d, homework: hw }));
     };
 

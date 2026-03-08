@@ -201,11 +201,11 @@ Resources:
       CodeUri: functions/aiAnalyzer/
       Timeout: 30
       MemorySize: 512
-      Description: AI-powered code analysis using AWS Bedrock (Claude Haiku 4.5)
+      Description: AI-powered code analysis using Groq (Llama 3.3 70B)
       Environment:
         Variables:
-          BEDROCK_REGION: ap-south-1
-          BEDROCK_MODEL_ID: global.anthropic.claude-haiku-4-5-20251001-v1:0
+          GROQ_API_KEY: !Sub '{{resolve:ssm:/synapse/groq-api-key}}'
+          GROQ_MODEL: llama-3.3-70b-versatile
       Events:
         PostAnalyze:
           Type: Api
@@ -213,15 +213,7 @@ Resources:
             RestApiId: !Ref SynapseApi
             Path: /analyze
             Method: POST
-      Policies:
-        - Statement:
-            - Effect: Allow
-              Action:
-                - bedrock:InvokeModel
-              Resource:
-                - "arn:aws:bedrock:ap-south-1::foundation-model/anthropic.claude-haiku-4-5-20251001-v1:0"
-                - !Sub "arn:aws:bedrock:ap-south-1:${AWS::AccountId}:inference-profile/global.anthropic.claude-haiku-4-5-20251001-v1:0"
-                - "arn:aws:bedrock:*::foundation-model/anthropic.claude-haiku-4-5-20251001-v1:0"
+      Policies: []
 
   # ============================================================
   # Lambda: cohortInfo

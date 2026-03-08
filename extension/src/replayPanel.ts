@@ -60,110 +60,130 @@ export class ReplayPanel {
     }, null, this._disposables);
   }
 
-  // ─── Shared CSS ──────────────────────────────────────────────────────────
   private get css(): string {
     return `
-      @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
       * { box-sizing: border-box; margin: 0; padding: 0; }
       body {
-        background: #0a0a0a;
-        color: #e5e5e5;
-        font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
+        background-color: #0D0D0D;
+        background-image:
+          linear-gradient(rgba(232, 255, 71, 0.03) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(232, 255, 71, 0.03) 1px, transparent 1px);
+        background-size: 40px 40px;
+        color: #F5F5F5;
+        font-family: 'DM Sans', system-ui, -apple-system, sans-serif;
         font-size: 13px;
         line-height: 1.6;
+        -webkit-font-smoothing: antialiased;
       }
+      ::-webkit-scrollbar { width: 4px; }
+      ::-webkit-scrollbar-track { background: #0D0D0D; }
+      ::-webkit-scrollbar-thumb { background: #2A2A2A; }
+      ::-webkit-scrollbar-thumb:hover { background: #E8FF47; }
+
+      @keyframes fadeUp { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
+      @keyframes slideUp { from { opacity:0; transform:translateY(16px); } to { opacity:1; transform:translateY(0); } }
+      @keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
+      @keyframes pulseGlow { 0%,100% { box-shadow: 0 0 0 0 rgba(255,107,53,0.3); } 50% { box-shadow: 0 0 16px 3px rgba(255,107,53,0.15); } }
+      @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.4} }
 
       /* ── Header ── */
       .header {
-        background: #111;
-        border-bottom: 1px solid #222;
+        background: #111111;
+        border-bottom: 1px solid #1E1E1E;
         padding: 14px 16px 0;
+        animation: fadeUp 0.3s ease forwards;
       }
       .logo-row { display: flex; align-items: center; gap: 8px; margin-bottom: 14px; }
-      .logo-icon {
-        width: 28px; height: 28px; border-radius: 7px;
-        background: #f97316;
-        display: flex; align-items: center; justify-content: center;
-        font-size: 15px; font-weight: 900; color: #000;
+      .logo-dot { width: 6px; height: 6px; background: #E8FF47; }
+      .logo-text {
+        font-family: 'Bebas Neue', Impact, sans-serif;
+        font-size: 20px; letter-spacing: 3px; color: #F5F5F5;
       }
-      .logo-text { font-size: 16px; font-weight: 800; color: #fff; letter-spacing: -0.3px; }
-      .logo-text span { color: #f97316; }
 
       /* ── Tabs ── */
       .tabs { display: flex; gap: 2px; }
       .tab {
-        padding: 8px 14px; border-radius: 6px 6px 0 0;
+        padding: 8px 14px;
         cursor: pointer; font-size: 12px; font-weight: 600;
         border: none; background: transparent; color: #555;
-        transition: all 0.15s;
+        transition: all 0.15s; border-bottom: 2px solid transparent;
+        font-family: 'DM Sans', system-ui, sans-serif;
       }
-      .tab.active { background: #1a1a1a; color: #f97316; border-bottom: 2px solid #f97316; }
-      .tab:hover:not(.active) { color: #aaa; background: #161616; }
+      .tab.active { background: #1A1A1A; color: #E8FF47; border-bottom-color: #E8FF47; }
+      .tab:hover:not(.active) { color: #888; background: #141414; }
 
       /* ── Stats ── */
-      .stats-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; padding: 14px; }
+      .stats-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; padding: 14px; }
       .stat-card {
-        background: #111; border: 1px solid #1f1f1f;
-        border-radius: 10px; padding: 14px 10px; text-align: center;
-        transition: border-color 0.2s;
+        background: #1A1A1A; border: 1px solid #2A2A2A;
+        border-top: 2px solid #E8FF47;
+        padding: 14px 10px; text-align: center;
+        transition: border-color 0.15s;
+        animation: slideUp 0.4s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+        opacity: 0;
       }
-      .stat-card:hover { border-color: #f9731630; }
-      .stat-value { font-size: 22px; font-weight: 800; color: #f97316; }
-      .stat-label { font-size: 10px; color: #555; margin-top: 3px; text-transform: uppercase; letter-spacing: 0.06em; }
+      .stat-card:nth-child(1) { animation-delay: 0.05s; }
+      .stat-card:nth-child(2) { animation-delay: 0.1s; }
+      .stat-card:nth-child(3) { animation-delay: 0.15s; }
+      .stat-card:hover { border-color: #333; }
+      .stat-value { font-family: 'Bebas Neue', Impact, sans-serif; font-size: 28px; line-height: 1; color: #F5F5F5; }
+      .stat-label { font-size: 9px; color: #555; margin-top: 6px; text-transform: uppercase; letter-spacing: 3px; font-weight: 500; }
 
       /* ── Section titles ── */
       .section-title {
         padding: 10px 14px 6px;
-        font-size: 10px; font-weight: 700;
-        color: #444; text-transform: uppercase; letter-spacing: 0.1em;
+        font-size: 9px; font-weight: 500;
+        color: #555; text-transform: uppercase; letter-spacing: 3px;
       }
 
       /* ── Session cards ── */
       .session-card {
-        margin: 0 14px 10px;
-        background: #111; border: 1px solid #1f1f1f;
-        border-radius: 10px; overflow: hidden;
-        transition: border-color 0.2s;
+        margin: 0 14px 8px;
+        background: #1A1A1A; border: 1px solid #2A2A2A;
+        overflow: hidden; transition: border-color 0.15s;
+        animation: slideUp 0.4s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+        opacity: 0;
       }
-      .session-card:hover { border-color: #2a2a2a; }
+      .session-card:nth-child(odd) { animation-delay: 0.1s; }
+      .session-card:nth-child(even) { animation-delay: 0.15s; }
+      .session-card:hover { border-color: #333; }
       .session-header {
         padding: 12px 14px; display: flex; align-items: center;
         justify-content: space-between; cursor: pointer;
       }
       .error-badge {
-        padding: 3px 9px; border-radius: 20px;
+        padding: 3px 9px;
         font-size: 10px; font-weight: 700; text-transform: uppercase;
-        letter-spacing: 0.05em;
+        letter-spacing: 1px;
       }
-      .error-badge.none_handling { background: #f9731615; color: #f97316; border: 1px solid #f9731625; }
-      .error-badge.try_except    { background: #ef444415; color: #f87171; border: 1px solid #ef444425; }
-      .error-badge.async_await   { background: #38bdf815; color: #38bdf8; border: 1px solid #38bdf825; }
-      .error-badge.list_ops      { background: #22c55e15; color: #4ade80; border: 1px solid #22c55e25; }
-      .session-meta { color: #444; font-size: 11px; margin-top: 4px; }
+      .error-badge.none_handling { background: rgba(255,107,53,0.1); color: #FF6B35; border: 1px solid rgba(255,107,53,0.2); }
+      .error-badge.try_except    { background: rgba(239,68,68,0.1); color: #f87171; border: 1px solid rgba(239,68,68,0.2); }
+      .error-badge.async_await   { background: rgba(56,189,248,0.1); color: #38bdf8; border: 1px solid rgba(56,189,248,0.2); }
+      .error-badge.list_ops      { background: rgba(74,222,128,0.1); color: #4ade80; border: 1px solid rgba(74,222,128,0.2); }
+      .session-meta { color: #555; font-size: 11px; margin-top: 4px; }
 
       .tag {
-        padding: 2px 8px; border-radius: 20px;
-        font-size: 10px; font-weight: 700; letter-spacing: 0.04em;
+        padding: 2px 8px;
+        font-size: 10px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase;
       }
-      .tag-resolved { background: #22c55e15; color: #4ade80; border: 1px solid #22c55e25; }
-      .tag-active { background: #f9731615; color: #f97316; border: 1px solid #f9731625; animation: blink 2s ease-in-out infinite; }
-      @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.4} }
+      .tag-resolved { background: rgba(74,222,128,0.1); color: #4ade80; border: 1px solid rgba(74,222,128,0.2); }
+      .tag-active { background: rgba(255,107,53,0.1); color: #FF6B35; border: 1px solid rgba(255,107,53,0.2); animation: blink 2s ease-in-out infinite; }
 
       /* ── Timeline ── */
-      .timeline { padding: 0 14px 14px; border-top: 1px solid #1a1a1a; }
-      .timeline-label { padding: 10px 0 8px; font-size: 10px; color: #444; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; }
+      .timeline { padding: 0 14px 14px; border-top: 1px solid #2A2A2A; }
+      .timeline-label { padding: 10px 0 8px; font-size: 9px; color: #555; font-weight: 500; text-transform: uppercase; letter-spacing: 3px; }
       .attempt { display: flex; gap: 10px; margin-bottom: 8px; }
       .attempt-dot {
-        width: 26px; height: 26px; border-radius: 50%;
+        width: 26px; height: 26px;
         display: flex; align-items: center; justify-content: center;
         font-size: 12px; flex-shrink: 0; margin-top: 2px;
       }
-      .attempt-dot.failed  { background: #ef444415; }
-      .attempt-dot.success { background: #22c55e15; }
-      .attempt-meta { font-size: 11px; color: #444; }
+      .attempt-dot.failed  { background: rgba(239,68,68,0.1); }
+      .attempt-dot.success { background: rgba(74,222,128,0.1); }
+      .attempt-meta { font-size: 11px; color: #555; }
       .attempt-code {
-        background: #0d0d0d; border: 1px solid #1a1a1a;
-        border-radius: 6px; padding: 7px 10px;
+        background: #0D0D0D; border: 1px solid #2A2A2A;
+        padding: 7px 10px;
         font-family: 'Cascadia Code', 'Fira Code', monospace;
         font-size: 11px; color: #666;
         margin-top: 5px; white-space: pre-wrap;
@@ -173,66 +193,75 @@ export class ReplayPanel {
       /* ── Quiz CTA ── */
       .quiz-cta {
         margin: 0 14px 14px;
-        background: #111; border: 1px solid #f9731625;
-        border-radius: 10px; padding: 14px;
+        background: #1A1A1A; border: 1px solid rgba(255,107,53,0.2);
+        border-top: 2px solid #FF6B35;
+        padding: 14px;
         display: flex; align-items: center; gap: 12px;
+        animation: slideUp 0.4s cubic-bezier(0.22, 1, 0.36, 1) forwards;
       }
-      .quiz-icon { font-size: 26px; }
-      .quiz-title { font-weight: 700; color: #f97316; font-size: 13px; margin-bottom: 2px; }
+      .quiz-icon { font-size: 24px; }
+      .quiz-title { font-weight: 700; color: #FF6B35; font-size: 13px; margin-bottom: 2px; }
       .quiz-sub { font-size: 11px; color: #555; }
 
       /* ── Buttons ── */
       .btn {
-        background: #f97316; color: #000;
-        border: none; padding: 8px 16px; border-radius: 7px;
-        cursor: pointer; font-weight: 700; font-size: 12px;
-        transition: background 0.15s, transform 0.1s;
-        white-space: nowrap;
-      }
-      .btn:hover { background: #fb923c; transform: translateY(-1px); }
-      .btn:active { transform: translateY(0); }
-      .btn-outline {
-        background: transparent; color: #f97316;
-        border: 1px solid #f9731640; padding: 8px 16px;
-        border-radius: 7px; cursor: pointer;
-        font-weight: 600; font-size: 12px;
+        background: #FF6B35; color: #000;
+        border: none; padding: 8px 16px;
+        cursor: pointer; font-weight: 700; font-size: 10px;
         transition: all 0.15s;
+        white-space: nowrap; text-transform: uppercase; letter-spacing: 1px;
+        font-family: 'DM Sans', system-ui, sans-serif;
+        position: relative; overflow: hidden;
       }
-      .btn-outline:hover { background: #f9731610; }
+      .btn::after {
+        content: ''; position: absolute; inset: 0;
+        background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
+        background-size: 200% 100%;
+        opacity: 0; transition: opacity 0.3s;
+      }
+      .btn:hover::after { opacity: 1; animation: shimmer 1.5s ease-in-out; }
+      .btn:hover { background: #e85d2a; }
       .btn-full { width: 100%; margin-top: 10px; }
 
       /* ── Empty state ── */
-      .empty-state { text-align: center; padding: 50px 24px; color: #333; }
+      .empty-state { text-align: center; padding: 50px 24px; color: #555; animation: slideUp 0.5s ease forwards; }
       .empty-icon { font-size: 44px; margin-bottom: 14px; }
-      .empty-state h3 { color: #555; font-size: 14px; margin-bottom: 6px; }
+      .empty-state h3 { color: #888; font-size: 14px; margin-bottom: 6px; }
       .empty-state p { font-size: 12px; line-height: 1.6; }
 
       /* ── DNA specific ── */
       .dna-card {
-        margin: 14px; background: #111;
-        border: 1px solid #f9731625; border-radius: 12px; padding: 20px;
-        text-align: center;
+        margin: 14px; background: #1A1A1A;
+        border: 1px solid rgba(255,107,53,0.2); border-top: 2px solid #FF6B35;
+        padding: 20px; text-align: center;
+        animation: slideUp 0.4s cubic-bezier(0.22, 1, 0.36, 1) forwards;
       }
       .dna-emoji { font-size: 44px; margin-bottom: 10px; }
-      .dna-label { font-size: 18px; font-weight: 800; color: #fff; text-transform: capitalize; margin-bottom: 4px; }
-      .dna-label span { color: #f97316; }
-      .dna-sub { font-size: 11px; color: #444; }
-      .insight-row { display: flex; gap: 10px; margin: 0 14px 14px; }
+      .dna-label { font-family: 'Bebas Neue', Impact, sans-serif; font-size: 22px; color: #F5F5F5; text-transform: capitalize; margin-bottom: 4px; letter-spacing: 2px; }
+      .dna-label span { color: #FF6B35; }
+      .dna-sub { font-size: 11px; color: #555; }
+      .insight-row { display: flex; gap: 8px; margin: 0 14px 14px; }
       .insight {
-        flex: 1; background: #111; border: 1px solid #1f1f1f;
-        border-radius: 10px; padding: 12px 8px; text-align: center;
+        flex: 1; background: #1A1A1A; border: 1px solid #2A2A2A;
+        border-top: 2px solid #E8FF47;
+        padding: 12px 8px; text-align: center;
+        animation: slideUp 0.4s cubic-bezier(0.22, 1, 0.36, 1) forwards; opacity: 0;
       }
-      .insight-val { font-size: 18px; font-weight: 800; color: #f97316; }
+      .insight:nth-child(1) { animation-delay: 0.05s; }
+      .insight:nth-child(2) { animation-delay: 0.1s; }
+      .insight:nth-child(3) { animation-delay: 0.15s; }
+      .insight-val { font-family: 'Bebas Neue', Impact, sans-serif; font-size: 24px; line-height: 1; color: #F5F5F5; }
       .insight-val.good { color: #4ade80; }
-      .insight-val.warn { color: #fbbf24; }
-      .insight-lbl { font-size: 10px; color: #444; text-transform: uppercase; letter-spacing: 0.05em; margin-top: 3px; }
+      .insight-val.warn { color: #FF6B35; }
+      .insight-lbl { font-size: 9px; color: #555; text-transform: uppercase; letter-spacing: 3px; margin-top: 6px; font-weight: 500; }
       .rec-box {
-        margin: 0 14px 14px; background: #111;
-        border: 1px solid #1f1f1f; border-radius: 10px; padding: 14px;
+        margin: 0 14px 14px; background: #1A1A1A;
+        border: 1px solid #2A2A2A; padding: 14px;
+        animation: slideUp 0.4s cubic-bezier(0.22, 1, 0.36, 1) forwards;
       }
-      .rec-title { font-weight: 700; color: #f97316; font-size: 12px; margin-bottom: 6px; }
-      .rec-body { font-size: 12px; color: #666; line-height: 1.7; }
-      .rec-body strong { color: #aaa; }
+      .rec-title { font-weight: 700; color: #E8FF47; font-size: 12px; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 1px; }
+      .rec-body { font-size: 12px; color: #888; line-height: 1.7; }
+      .rec-body strong { color: #F5F5F5; }
     `;
   }
 
@@ -268,8 +297,8 @@ export class ReplayPanel {
 <body>
   <div class="header">
     <div class="logo-row">
-      <div class="logo-icon">S</div>
-      <div class="logo-text">Syn<span>apse</span></div>
+      <div class="logo-dot"></div>
+      <div class="logo-text">SYNAPSE</div>
     </div>
     <div class="tabs">
       <button class="tab active" onclick="vscode.postMessage({command:'switchView',view:'replay'})">Debugging Replay</button>
@@ -359,8 +388,8 @@ export class ReplayPanel {
 <body>
   <div class="header">
     <div class="logo-row">
-      <div class="logo-icon">S</div>
-      <div class="logo-text">Syn<span>apse</span></div>
+      <div class="logo-dot"></div>
+      <div class="logo-text">SYNAPSE</div>
     </div>
     <div class="tabs">
       <button class="tab" onclick="vscode.postMessage({command:'switchView',view:'replay'})">Debugging Replay</button>

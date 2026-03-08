@@ -1,19 +1,18 @@
 import requests
 import json
 
-def fetch_user(user_id):
-    user = db.query(user_id)
-    return user.name          # ← Synapse should warn here (None handling)
+# None Handling
+result = db.get("key")
+print(result.name)
 
-def load_config():
-    data = open("config.json").read()   # ← No try/except
-    return json.loads(data)             # ← No try/except
+# Missing try/except
+data = json.loads(input_string)
 
-async def get_data():
-    result = fetch_user(1)
+# Async/await misuse
+def my_function():
+    await some_async_call()
 
-def broken_async():
-    data = await get_data()   # ← await outside async def
-
+# List index without length check
 items = [1, 2, 3]
-print(items[5])               # ← Index without bounds check
+x = items[5]
+

@@ -18,8 +18,8 @@
     }
 
     body {
-      background: #05050A;
-      color: #fff;
+      background: #080808;
+      color: #e5e5e5;
       font-family: 'Inter', system-ui, sans-serif;
       min-height: 100vh;
       display: flex;
@@ -27,206 +27,130 @@
       justify-content: center;
     }
 
-    /* Ambient orbs */
-    .orb-field {
-      position: fixed;
-      inset: 0;
-      pointer-events: none;
-      z-index: 0;
-      overflow: hidden;
-    }
-
-    .orb {
-      position: absolute;
-      border-radius: 50%;
-      filter: blur(160px);
-      opacity: 0.15;
-    }
-
-    .orb-cyan {
-      width: 60vw;
-      height: 60vw;
-      top: -20%;
-      left: -5%;
-      background: #00E5FF;
-      animation: drift1 30s ease-in-out infinite alternate;
-    }
-
-    .orb-violet {
-      width: 55vw;
-      height: 65vw;
-      bottom: -25%;
-      right: -10%;
-      background: #7000FF;
-      animation: drift2 36s ease-in-out infinite alternate;
-    }
-
-    @keyframes drift1 {
-      0% {
-        transform: translate(0, 0) scale(1)
-      }
-
-      100% {
-        transform: translate(30px, 25px) scale(1.04)
-      }
-    }
-
-    @keyframes drift2 {
-      0% {
-        transform: translate(0, 0) scale(1.02)
-      }
-
-      100% {
-        transform: translate(-25px, -20px) scale(0.98)
-      }
-    }
-
-    .grain {
-      position: fixed;
-      inset: 0;
-      z-index: 1;
-      pointer-events: none;
-      opacity: 0.02;
-      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
-      background-size: 200px 200px;
-    }
-
-    .grid-mesh {
-      position: fixed;
-      inset: 0;
-      z-index: 1;
-      pointer-events: none;
-      background-image:
-        linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
-      background-size: 52px 52px;
-    }
-
-    .card {
-      position: relative;
-      z-index: 2;
-      width: 100%;
-      max-width: 400px;
-      padding: 40px;
-      background: rgba(255, 255, 255, 0.02);
-      backdrop-filter: blur(24px) saturate(120%);
-      -webkit-backdrop-filter: blur(24px) saturate(120%);
-      border: 1px solid rgba(255, 255, 255, 0.04);
-      border-radius: 18px;
-      box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.08), inset 0 0 0 1px rgba(255, 255, 255, 0.03), 0 40px 80px -16px rgba(0, 0, 0, 0.7);
-    }
-
-    .card::after {
+    /* Background grid */
+    body::before {
       content: '';
-      position: absolute;
-      top: 0;
-      left: 14%;
-      right: 14%;
-      height: 1px;
-      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.08), transparent);
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(249, 115, 22, 0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(249, 115, 22, 0.03) 1px, transparent 1px);
+      background-size: 40px 40px;
+      pointer-events: none;
     }
 
-    .card-logo {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      margin-bottom: 32px;
-    }
-
-    .logo-mark {
-      width: 34px;
-      height: 34px;
-      border-radius: 9px;
-      background: linear-gradient(135deg, #00E5FF 0%, #0090a0 100%);
+    .page {
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 16px;
+      width: 100%;
+      min-height: 100vh;
+      padding: 24px;
+    }
+
+    /* Left glow */
+    .glow {
+      position: fixed;
+      top: 20%;
+      left: -200px;
+      width: 500px;
+      height: 500px;
+      background: radial-gradient(circle, rgba(249, 115, 22, 0.08) 0%, transparent 70%);
+      pointer-events: none;
+    }
+
+    .card {
+      background: #111;
+      border: 1px solid #1e1e1e;
+      border-radius: 20px;
+      padding: 40px;
+      width: 100%;
+      max-width: 420px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .logo-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 28px;
+    }
+
+    .logo-mark {
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
+      background: #f97316;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
       font-weight: 900;
       color: #000;
-      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.25), 0 4px 16px -4px rgba(0, 0, 0, 0.5);
     }
 
     .logo-name {
-      font-size: 18px;
+      font-size: 20px;
       font-weight: 800;
-      letter-spacing: -0.5px;
+      color: #fff;
+    }
+
+    .logo-name span {
+      color: #f97316;
+    }
+
+    .card-heading {
+      font-size: 22px;
+      font-weight: 800;
+      color: #fff;
+      margin-bottom: 6px;
+    }
+
+    .card-sub {
+      font-size: 13px;
+      color: #555;
+      margin-bottom: 28px;
     }
 
     /* Tabs */
     .tabs {
-      display: flex;
-      gap: 4px;
-      margin-bottom: 28px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      background: #0d0d0d;
+      border: 1px solid #1e1e1e;
+      border-radius: 10px;
+      padding: 4px;
+      margin-bottom: 24px;
     }
 
     .tab {
-      flex: 1;
-      padding: 9px;
+      padding: 8px;
       border-radius: 8px;
+      text-align: center;
+      cursor: pointer;
       font-size: 13px;
       font-weight: 600;
-      text-align: center;
-      background: rgba(255, 255, 255, 0.03);
-      border: 1px solid rgba(255, 255, 255, 0.04);
-      color: #8B8B9E;
-      cursor: pointer;
-      transition: all 0.2s ease-out;
-    }
-
-    .tab:hover {
-      background: rgba(255, 255, 255, 0.05);
-      color: #ccc;
+      color: #444;
+      transition: all 0.15s;
+      border: none;
+      background: transparent;
     }
 
     .tab.active {
-      background: rgba(0, 229, 255, 0.08);
-      border-color: rgba(0, 229, 255, 0.18);
-      color: #00E5FF;
-    }
-
-    /* Demo chips */
-    .demo-chips {
-      display: flex;
-      gap: 8px;
-      margin-bottom: 20px;
-    }
-
-    .demo-chip {
-      flex: 1;
-      padding: 8px;
-      border-radius: 8px;
-      font-size: 11px;
-      font-weight: 600;
-      text-align: center;
-      background: rgba(255, 255, 255, 0.02);
-      border: 1px solid rgba(255, 255, 255, 0.06);
-      color: #8B8B9E;
-      cursor: pointer;
-      transition: all 0.2s ease-out;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 6px;
-    }
-
-    .demo-chip:hover {
-      background: rgba(0, 229, 255, 0.06);
-      border-color: rgba(0, 229, 255, 0.16);
-      color: #00E5FF;
-    }
-
-    .demo-chip svg {
-      width: 14px;
-      height: 14px;
-      stroke: currentColor;
-      fill: none;
-      stroke-width: 2;
-      stroke-linecap: round;
-      stroke-linejoin: round;
+      background: #f97316;
+      color: #000;
     }
 
     /* Form */
+    .form-section {
+      display: none;
+    }
+
+    .form-section.active {
+      display: block;
+    }
+
     .field {
       margin-bottom: 16px;
     }
@@ -235,45 +159,81 @@
       display: block;
       font-size: 11px;
       font-weight: 700;
-      color: #3E3E52;
+      color: #555;
       text-transform: uppercase;
-      letter-spacing: 0.08em;
+      letter-spacing: 0.07em;
       margin-bottom: 6px;
     }
 
-    input,
-    select {
+    input {
       width: 100%;
-      background: rgba(255, 255, 255, 0.03);
-      border: 1px solid rgba(255, 255, 255, 0.06);
+      background: #0d0d0d;
+      border: 1px solid #1e1e1e;
       border-radius: 9px;
       padding: 11px 14px;
       font-size: 13px;
-      color: #fff;
+      color: #e5e5e5;
       font-family: inherit;
       outline: none;
-      transition: all 0.2s;
-      box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.06), inset 0 0 0 1px rgba(255, 255, 255, 0.02);
+      transition: border-color 0.15s;
     }
 
-    input:focus,
-    select:focus {
-      border-color: rgba(0, 229, 255, 0.35);
-      background: rgba(0, 229, 255, 0.03);
-      box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.06), inset 0 0 0 1px rgba(255, 255, 255, 0.02), 0 0 0 3px rgba(0, 229, 255, 0.06);
+    input:focus {
+      border-color: #f97316;
     }
 
     input::placeholder {
-      color: #3E3E52;
+      color: #333;
     }
 
-    select option {
-      background: #0a0a14;
+    .role-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+
+    .role-card {
+      border: 1.5px solid #1e1e1e;
+      border-radius: 10px;
+      padding: 14px 12px;
+      cursor: pointer;
+      text-align: center;
+      transition: all 0.15s;
+      background: #0d0d0d;
+    }
+
+    .role-card:hover {
+      border-color: #f97316;
+    }
+
+    .role-card.selected {
+      border-color: #f97316;
+      background: #f9731610;
+    }
+
+    .role-card input[type=radio] {
+      display: none;
+    }
+
+    .role-icon {
+      font-size: 22px;
+      margin-bottom: 6px;
+    }
+
+    .role-label {
+      font-size: 12px;
+      font-weight: 700;
+      color: #555;
+    }
+
+    .role-card.selected .role-label {
+      color: #f97316;
     }
 
     .btn-primary {
       width: 100%;
-      background: linear-gradient(180deg, #14E8FF 0%, #00C4DD 100%);
+      background: #f97316;
       color: #000;
       border: none;
       padding: 13px;
@@ -281,156 +241,267 @@
       font-size: 14px;
       font-weight: 800;
       cursor: pointer;
+      transition: background 0.15s;
       font-family: inherit;
-      transition: all 0.25s cubic-bezier(0.22, 1, 0.36, 1);
-      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.25), 0 24px 48px -12px rgba(0, 0, 0, 0.5);
-      margin-top: 8px;
+      margin-top: 4px;
     }
 
     .btn-primary:hover {
-      transform: translateY(-2px);
-      filter: brightness(1.08);
+      background: #fb923c;
     }
 
-    .btn-primary:active {
-      transform: scale(0.97);
-      filter: brightness(0.95);
+    .divider {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin: 20px 0;
     }
 
-    .form-section {
+    .divider::before,
+    .divider::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: #1e1e1e;
+    }
+
+    .divider span {
+      font-size: 11px;
+      color: #333;
+    }
+
+    .switch-link {
+      text-align: center;
+      font-size: 12px;
+      color: #555;
+    }
+
+    .switch-link a {
+      color: #f97316;
+      text-decoration: none;
+      font-weight: 600;
+    }
+
+    .error-msg {
+      background: #ef444415;
+      border: 1px solid #ef444430;
+      color: #f87171;
+      border-radius: 8px;
+      padding: 10px 14px;
+      font-size: 12px;
+      margin-bottom: 16px;
       display: none;
     }
 
-    .form-section.active {
+    .error-msg.show {
       display: block;
+    }
+
+    /* Quick login buttons */
+    .quick-btns {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .btn-quick {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      width: 100%;
+      padding: 12px 14px;
+      background: #0d0d0d;
+      border: 1px solid #1e1e1e;
+      border-radius: 10px;
+      cursor: pointer;
+      font-family: inherit;
+      transition: all 0.15s;
+      text-align: left;
+    }
+
+    .btn-quick:hover {
+      border-color: #f97316;
+      background: #f9731608;
+    }
+
+    .q-icon {
+      font-size: 22px;
+    }
+
+    .q-name {
+      display: block;
+      font-size: 13px;
+      font-weight: 700;
+      color: #fff;
+    }
+
+    .q-email {
+      display: block;
+      font-size: 11px;
+      color: #555;
+      margin-top: 1px;
     }
   </style>
 </head>
 
 <body>
-  <div class="orb-field">
-    <div class="orb orb-cyan"></div>
-    <div class="orb orb-violet"></div>
-  </div>
-  <div class="grain"></div>
-  <div class="grid-mesh"></div>
+  <div class="glow"></div>
+  <div class="page">
+    <div class="card">
+      <div class="logo-row">
+        <div class="logo-mark">S</div>
+        <div class="logo-name">Syn<span>apse</span></div>
+      </div>
 
-  <div class="card">
-    <div class="card-logo">
-      <div class="logo-mark">S</div>
-      <div class="logo-name">Synapse</div>
-    </div>
+      <!-- Tab switcher -->
+      <div class="tabs">
+        <button class="tab active" id="tabSignin" onclick="switchTab('signin')">Sign In</button>
+        <button class="tab" id="tabSignup" onclick="switchTab('signup')">Sign Up</button>
+      </div>
 
-    <div class="tabs">
-      <div class="tab active" onclick="switchTab('signin')">Sign In</div>
-      <div class="tab" onclick="switchTab('signup')">Sign Up</div>
-    </div>
+      <!-- Sign In -->
+      <div class="form-section active" id="formSignin">
+        <div class="error-msg" id="signinError">Invalid email or password.</div>
+        <div class="field">
+          <label>Email</label>
+          <input type="email" id="siEmail" placeholder="you@bootcamp.com" />
+        </div>
+        <div class="field">
+          <label>Password</label>
+          <input type="password" id="siPassword" placeholder="••••••••" />
+        </div>
+        <button class="btn-primary" onclick="handleSignin()">Sign In →</button>
 
-    <!-- Quick-fill demo accounts -->
-    <div class="demo-chips">
-      <div class="demo-chip" onclick="fillDemo('teacher')">
-        <svg viewBox="0 0 24 24">
-          <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-          <circle cx="9" cy="7" r="4" />
-          <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
-          <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-        </svg>
-        Demo Teacher
-      </div>
-      <div class="demo-chip" onclick="fillDemo('student')">
-        <svg viewBox="0 0 24 24">
-          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-          <circle cx="12" cy="7" r="4" />
-        </svg>
-        Demo Student
-      </div>
-    </div>
+        <div class="divider"><span>quick login</span></div>
+        <div class="quick-btns">
+          <button class="btn-quick teacher" onclick="quickLogin('teacher')">
+            <span class="q-icon">🧑‍🏫</span>
+            <span>
+              <span class="q-name">Demo Teacher</span>
+              <span class="q-email">teacher@demo.com</span>
+            </span>
+          </button>
+          <button class="btn-quick student" onclick="quickLogin('student')">
+            <span class="q-icon">👨‍💻</span>
+            <span>
+              <span class="q-name">Demo Student</span>
+              <span class="q-email">student@demo.com</span>
+            </span>
+          </button>
+        </div>
 
-    <!-- Sign In Form -->
-    <div class="form-section active" id="form-signin">
-      <div class="field">
-        <label>Email</label>
-        <input type="email" id="si-email" placeholder="you@university.edu" />
+        <div class="divider"><span>or</span></div>
+        <div class="switch-link">Don't have an account? <a href="#" onclick="switchTab('signup')">Sign Up</a></div>
       </div>
-      <div class="field">
-        <label>Password</label>
-        <input type="password" id="si-pass" placeholder="Enter password" />
-      </div>
-      <button class="btn-primary" onclick="handleSignin()">Sign In</button>
-    </div>
 
-    <!-- Sign Up Form -->
-    <div class="form-section" id="form-signup">
-      <div class="field">
-        <label>Full Name</label>
-        <input type="text" id="su-name" placeholder="Your name" />
+      <!-- Sign Up -->
+      <div class="form-section" id="formSignup">
+        <div class="error-msg" id="signupError">Please fill in all fields.</div>
+        <div class="field">
+          <label>I am a...</label>
+          <div class="role-grid">
+            <label class="role-card selected" id="roleTeacher">
+              <input type="radio" name="role" value="teacher" checked onchange="selectRole('teacher')">
+              <div class="role-icon">🧑‍🏫</div>
+              <div class="role-label">Teacher</div>
+            </label>
+            <label class="role-card" id="roleStudent">
+              <input type="radio" name="role" value="student" onchange="selectRole('student')">
+              <div class="role-icon">👨‍💻</div>
+              <div class="role-label">Student</div>
+            </label>
+          </div>
+        </div>
+        <div class="field">
+          <label>Full Name</label>
+          <input type="text" id="suName" placeholder="e.g. Priya Sharma" />
+        </div>
+        <div class="field">
+          <label>Email</label>
+          <input type="email" id="suEmail" placeholder="you@bootcamp.com" />
+        </div>
+        <div class="field">
+          <label>Password</label>
+          <input type="password" id="suPassword" placeholder="min. 8 characters" />
+        </div>
+        <button class="btn-primary" onclick="handleSignup()">Create Account →</button>
+        <div class="divider"><span>or</span></div>
+        <div class="switch-link">Already have an account? <a href="#" onclick="switchTab('signin')">Sign In</a></div>
       </div>
-      <div class="field">
-        <label>Email</label>
-        <input type="email" id="su-email" placeholder="you@university.edu" />
-      </div>
-      <div class="field">
-        <label>Password</label>
-        <input type="password" id="su-pass" placeholder="Min 6 characters" />
-      </div>
-      <div class="field">
-        <label>Role</label>
-        <select id="su-role">
-          <option value="teacher">Instructor</option>
-          <option value="student">Student</option>
-        </select>
-      </div>
-      <button class="btn-primary" onclick="handleSignup()">Create Account</button>
     </div>
   </div>
 
   <script>
+    // ── Mock auth (replace with real API calls when backend is ready) ──
     const MOCK_USERS = [
       { email: 'teacher@demo.com', password: 'demo1234', role: 'teacher', name: 'Demo Teacher' },
       { email: 'student@demo.com', password: 'demo1234', role: 'student', name: 'Demo Student' },
-      { email: 'vraj@synapse.dev', password: 'demo1234', role: 'teacher', name: 'Vraj Vashi' },
     ];
 
-    function switchTab(id) {
-      document.querySelectorAll('.tab').forEach((t, i) => t.classList.toggle('active', i === (id === 'signin' ? 0 : 1)));
-      document.getElementById('form-signin').classList.toggle('active', id === 'signin');
-      document.getElementById('form-signup').classList.toggle('active', id === 'signup');
+    function switchTab(tab) {
+      document.getElementById('tabSignin').classList.toggle('active', tab === 'signin');
+      document.getElementById('tabSignup').classList.toggle('active', tab === 'signup');
+      document.getElementById('formSignin').classList.toggle('active', tab === 'signin');
+      document.getElementById('formSignup').classList.toggle('active', tab === 'signup');
     }
 
-    function fillDemo(role) {
-      switchTab('signin');
-      const acct = role === 'teacher' ? MOCK_USERS[0] : MOCK_USERS[1];
-      document.getElementById('si-email').value = acct.email;
-      document.getElementById('si-pass').value = acct.password;
-    }
-
-    function redirect(userObj) {
-      localStorage.setItem('synapse_user', JSON.stringify(userObj));
-      window.location.href = userObj.role === 'teacher' ? 'classrooms.html' : 'student.html';
+    function selectRole(role) {
+      document.getElementById('roleTeacher').classList.toggle('selected', role === 'teacher');
+      document.getElementById('roleStudent').classList.toggle('selected', role === 'student');
     }
 
     function handleSignin() {
-      const email = document.getElementById('si-email').value.trim().toLowerCase();
-      const pass = document.getElementById('si-pass').value;
-      if (!email || !pass) return;
-      const found = MOCK_USERS.find(u => u.email === email && u.password === pass);
-      if (found) { redirect(found); return; }
-      const stored = JSON.parse(localStorage.getItem('synapse_users') || '[]');
-      const user = stored.find(u => u.email === email && u.password === pass);
-      if (user) { redirect(user); } else { alert('Invalid credentials'); }
+      const email = document.getElementById('siEmail').value.trim();
+      const password = document.getElementById('siPassword').value;
+      const errEl = document.getElementById('signinError');
+
+      // Mock: accept demo credentials or any @test.com
+      const user = MOCK_USERS.find(u => u.email === email && u.password === password)
+        || (email && password.length >= 6 ? { email, role: 'teacher', name: email.split('@')[0] } : null);
+
+      if (!user) { errEl.classList.add('show'); return; }
+      errEl.classList.remove('show');
+
+      // Save session
+      localStorage.setItem('synapse_user', JSON.stringify(user));
+      redirect(user.role);
     }
 
     function handleSignup() {
-      const name = document.getElementById('su-name').value.trim();
-      const email = document.getElementById('su-email').value.trim().toLowerCase();
-      const pass = document.getElementById('su-pass').value;
-      const role = document.getElementById('su-role').value;
-      if (!name || !email || pass.length < 6) { alert('Please fill in all fields'); return; }
-      const users = JSON.parse(localStorage.getItem('synapse_users') || '[]');
-      const newUser = { email, password: pass, role, name };
-      users.push(newUser);
-      localStorage.setItem('synapse_users', JSON.stringify(users));
-      redirect(newUser);
+      const name = document.getElementById('suName').value.trim();
+      const email = document.getElementById('suEmail').value.trim();
+      const password = document.getElementById('suPassword').value;
+      const role = document.querySelector('input[name=role]:checked').value;
+      const errEl = document.getElementById('signupError');
+
+      if (!name || !email || password.length < 8) { errEl.classList.add('show'); return; }
+      errEl.classList.remove('show');
+
+      const user = { email, role, name };
+      localStorage.setItem('synapse_user', JSON.stringify(user));
+      redirect(role);
+    }
+
+    function redirect(role) {
+      if (role === 'teacher') {
+        window.location.href = 'classrooms.html';
+      } else {
+        window.location.href = 'student.html';
+      }
+    }
+
+    function quickLogin(role) {
+      const user = MOCK_USERS.find(u => u.role === role);
+      if (!user) return;
+      localStorage.setItem('synapse_user', JSON.stringify(user));
+      redirect(user.role);
+    }
+
+    // Auto-redirect if already logged in
+    const existing = localStorage.getItem('synapse_user');
+    if (existing) {
+      const u = JSON.parse(existing);
+      redirect(u.role);
     }
   </script>
 </body>

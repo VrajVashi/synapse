@@ -27,10 +27,17 @@ export function activate(context: vscode.ExtensionContext) {
     diagnosticCollection = vscode.languages.createDiagnosticCollection('synapse');
     api = new SynapseApi();
     sessionRecorder = new SessionRecorder(context, api);
-    analyzer = new SynapseAnalyzer(diagnosticCollection, sessionRecorder);
+    analyzer = new SynapseAnalyzer(diagnosticCollection, sessionRecorder, api);
 
     // Sidebar panel (Grammarly-style)
-    sidebarProvider = new SynapseViewProvider(context.extensionUri, api);
+    sidebarProvider = new SynapseViewProvider(context.extensionUri, context, api);
+
+    // Gate session tracking based on classroom membership
+    sidebarProvider.onClassroomChanged(() => {
+        sessionRecorder.setEnabled(sidebarProvider.isInClassroom());
+    });
+    // Set initial tracking state
+    sessionRecorder.setEnabled(sidebarProvider.isInClassroom());
     context.subscriptions.push(
         vscode.window.registerWebviewViewProvider(
             SynapseViewProvider.viewType,
@@ -155,7 +162,9 @@ export function activate(context: vscode.ExtensionContext) {
         vscode.workspace.onDidSaveTextDocument(doc => {
             if (doc.languageId === 'python') {
                 analyzer.analyzeDocument(doc);
-                sessionRecorder.onFileSaved(doc, getStudentId(context));
+                if (sidebarProvider.isInClassroom()) {
+                    sessionRecorder.onFileSaved(doc, getStudentId(context));
+                }
                 updateStatusBar(diagnosticCollection, doc.uri);
             }
         }),

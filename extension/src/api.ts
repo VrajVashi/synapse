@@ -13,7 +13,10 @@ export class SynapseApi {
         const base = this.getBase();
         if (!base) { return; } // No API configured yet
 
-        await this.post('/sessions', session);
+        // Inject cohortId from VS Code settings so the Lambda can write it to DynamoDB
+        const config = vscode.workspace.getConfiguration('synapse');
+        const cohortId = config.get<string>('cohortId') || '';
+        await this.post('/sessions', { ...session, cohortId });
     }
 
     async getSessions(studentId: string): Promise<DebugSession[]> {
@@ -77,6 +80,31 @@ export class SynapseApi {
         await this.post('/quiz/results', { studentId, errorType, score, total, timestamp: new Date().toISOString() });
     }
 
+    async analyzeWithAI(request: {
+        code: string;
+        errorType: string;
+        errorMessage: string;
+        line: number;
+        filePath: string;
+        studentId?: string;
+        cohortContext?: { crashRate: number; avgFixMinutes: number };
+    }): Promise<AIAnalysisResult | null> {
+        const base = this.getBase();
+        if (!base) { return null; }
+
+        try {
+            const response = await fetch(`${base}/analyze`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(request),
+            });
+            if (!response.ok) { return null; }
+            return await response.json() as AIAnalysisResult;
+        } catch {
+            return null;
+        }
+    }
+
     async getHomework(classroomId: string): Promise<HWQuestion[]> {
         const base = this.getBase();
         if (!base) { return MOCK_HW_QUESTIONS; } // fallback to mock when no API
@@ -134,6 +162,14 @@ export interface QuizQuestion {
     options: string[];
     correctIndex: number;
     explanation: string;
+}
+
+export interface AIAnalysisResult {
+    explanation: string;
+    fixSuggestion: string;
+    conceptsToReview: string[];
+    confidence: number;
+    modelId: string;
 }
 
 export interface HWQuestion {

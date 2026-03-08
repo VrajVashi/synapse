@@ -1,6 +1,10 @@
-const API_BASE = 'https://your-api-id.execute-api.ap-south-1.amazonaws.com/prod';
+// ─── Base URL from environment (set VITE_API_BASE_URL in .env) ───────────────
+// Local dev:  VITE_API_BASE_URL=http://localhost:3000
+// AWS prod:   VITE_API_BASE_URL=https://abc123.execute-api.ap-south-1.amazonaws.com/prod
+const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
 
-const mockData = {
+// ─── Mock data fallbacks (used when the API is unreachable) ──────────────────
+const MOCK = {
     cohortInfo: {
         name: 'Full Stack Cohort 12',
         week: 3,
@@ -45,32 +49,88 @@ const mockData = {
     ],
 };
 
+// ─── Helper: fetch with fallback ─────────────────────────────────────────────
+async function fetchWithFallback(endpoint, fallback) {
+    try {
+        const res = await fetch(`${BASE_URL}${endpoint}`);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return await res.json();
+    } catch (e) {
+        console.warn(`[Synapse API] ${endpoint} failed (${e.message}), using fallback data.`);
+        return fallback;
+    }
+}
+
+// ─── API object ───────────────────────────────────────────────────────────────
 export const API = {
-    async getCohortInfo() { return mockData.cohortInfo; },
-    async getHeatmap() { return mockData.heatmap; },
-    async getAtRisk() { return mockData.atRisk; },
-    async getMastery() { return mockData.mastery; },
-    async getCurriculum() { return mockData.curriculum; },
-    async getWeeklyStats() { return mockData.weeklyStats; },
-    async getHomework() { return mockData.homework; },
-    async createHomework(payload) {
-        const slug = payload.title.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '');
-        const newQ = {
-            id: `hw-${Date.now()}`,
-            title: payload.title,
-            body: payload.body,
-            filename: `hw_${slug}.py`,
-            status: 'open',
-            dueDate: payload.dueDate || null,
-            submissionCount: 0,
-            totalStudents: mockData.cohortInfo.totalStudents,
-            avgAttempts: 0,
-        };
-        mockData.homework.unshift(newQ);
-        return newQ;
+    async getCohortInfo() {
+        return fetchWithFallback('/cohort/info', MOCK.cohortInfo);
     },
+
+    async getHeatmap() {
+        return fetchWithFallback('/cohort/heatmap', MOCK.heatmap);
+    },
+
+    async getAtRisk() {
+        return fetchWithFallback('/cohort/at-risk', MOCK.atRisk);
+    },
+
+    async getMastery() {
+        return fetchWithFallback('/cohort/mastery', MOCK.mastery);
+    },
+
+    async getCurriculum() {
+        return fetchWithFallback('/cohort/curriculum', MOCK.curriculum);
+    },
+
+    async getWeeklyStats() {
+        return fetchWithFallback('/cohort/stats', MOCK.weeklyStats);
+    },
+
+    async getHomework() {
+        return fetchWithFallback('/cohort/homework', MOCK.homework);
+    },
+
+    async createHomework(payload) {
+        try {
+            const res = await fetch(`${BASE_URL}/cohort/homework`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload),
+            });
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            return await res.json();
+        } catch (e) {
+            console.warn(`[Synapse API] POST /cohort/homework failed (${e.message}), using local fallback.`);
+            // Local fallback: mutate the mock array so the UI still updates
+            const slug = payload.title.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '');
+            const newQ = {
+                id: `hw-${Date.now()}`,
+                title: payload.title,
+                body: payload.body,
+                filename: `hw_${slug}.py`,
+                status: 'open',
+                dueDate: payload.dueDate || null,
+                submissionCount: 0,
+                totalStudents: MOCK.cohortInfo.totalStudents,
+                avgAttempts: 0,
+            };
+            MOCK.homework.unshift(newQ);
+            return newQ;
+        }
+    },
+
     async closeHomework(hwId) {
-        const q = mockData.homework.find(h => h.id === hwId);
-        if (q) q.status = 'closed';
+        try {
+            const res = await fetch(`${BASE_URL}/cohort/homework/${hwId}/close`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+            });
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        } catch (e) {
+            console.warn(`[Synapse API] POST /cohort/homework/${hwId}/close failed (${e.message}), using local fallback.`);
+            const q = MOCK.homework.find(h => h.id === hwId);
+            if (q) q.status = 'closed';
+        }
     },
 };

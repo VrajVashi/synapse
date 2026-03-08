@@ -397,6 +397,60 @@ app.post('/cohort/homework/:id/close', (req, res) => {
 });
 
 // ═══════════════════════════════════════════════════════════════════════════════
+// ROUTES — AI Analysis (mocks AWS Bedrock — same response contract as prod)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// Pre-baked AI responses per error type (mirrors what Bedrock Claude Haiku returns)
+const AI_RESPONSES = {
+    none_handling: {
+        explanation: 'This code calls `.attribute` on a value that can return None. When the query finds no result, Python raises AttributeError: \'NoneType\' object has no attribute \'name\'. This pattern causes crashes in 73% of similar student sessions.',
+        fixSuggestion: 'Add a None guard before accessing attributes:\n\nif result is None:\n    return "Not found"\nreturn result.name',
+        conceptsToReview: ['None Handling', 'Defensive Programming', 'dict.get() vs dict[]'],
+        confidence: 91,
+        modelId: 'anthropic.claude-3-haiku-20240307-v1:0',
+    },
+    async_await: {
+        explanation: 'The `await` keyword is used outside an `async def` function. This is a SyntaxError that crashes immediately — Python cannot execute coroutines in synchronous context.',
+        fixSuggestion: 'Add `async` to the enclosing function definition:\n\nasync def your_function():\n    result = await some_async_call()',
+        conceptsToReview: ['Async/Await Syntax', 'asyncio.run()', 'Coroutines vs Functions'],
+        confidence: 96,
+        modelId: 'anthropic.claude-3-haiku-20240307-v1:0',
+    },
+    try_except: {
+        explanation: 'This operation can raise an exception that isn\'t caught. File I/O, HTTP requests, and JSON parsing commonly fail in production — wrapping in try/except prevents crashes and gives users a useful error message.',
+        fixSuggestion: 'Wrap the risky operation:\n\ntry:\n    result = risky_operation()\nexcept (ValueError, IOError) as e:\n    print(f"Error: {e}")\n    result = None',
+        conceptsToReview: ['Exception Handling', 'try/except Blocks', 'Specific vs Bare except'],
+        confidence: 88,
+        modelId: 'anthropic.claude-3-haiku-20240307-v1:0',
+    },
+    list_ops: {
+        explanation: 'Accessing a list with a fixed index without checking its length can raise IndexError. If the list has fewer elements than expected (e.g. empty API response), your code crashes.',
+        fixSuggestion: 'Check length before accessing:\n\nif len(items) > 0:\n    first = items[0]\nelse:\n    first = None\n\n# Or use: first = items[0] if items else None',
+        conceptsToReview: ['List Indexing', 'IndexError Prevention', 'Defensive List Access'],
+        confidence: 83,
+        modelId: 'anthropic.claude-3-haiku-20240307-v1:0',
+    },
+    type_error: {
+        explanation: 'A TypeError occurs when an operation is applied to the wrong type — like adding a string and an integer, or calling a method on None. Python is dynamically typed, so these errors only appear at runtime.',
+        fixSuggestion: 'Add explicit type conversion:\n\n# Instead of: result = value + count\nresult = str(value) + str(count)  # or int(value) + int(count)\n\n# Always validate input types before operations.',
+        conceptsToReview: ['Python Type System', 'Type Casting', 'isinstance() Checks'],
+        confidence: 85,
+        modelId: 'anthropic.claude-3-haiku-20240307-v1:0',
+    },
+};
+
+app.post('/analyze', (req, res) => {
+    const { errorType, errorMessage, code, studentId } = req.body;
+
+    // Small simulated delay to mimic Bedrock API latency (makes it feel real)
+    setTimeout(() => {
+        const response = AI_RESPONSES[errorType] || AI_RESPONSES.none_handling;
+        console.log(`[Synapse AI] Analysis for ${studentId || 'anon'}: ${errorType} → ${response.confidence}% confidence`);
+        res.json(response);
+    }, 800 + Math.random() * 600); // 800ms–1400ms simulated latency
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
 // STARTUP
 // ═══════════════════════════════════════════════════════════════════════════════
 

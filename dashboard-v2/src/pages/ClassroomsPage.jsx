@@ -3,9 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../components/Toast';
 import { useMagneticHover } from '../hooks/useMagneticHover';
+import { API } from '../api';
 import ParticleField from '../components/ParticleField';
 import AuroraBackground from '../components/AuroraBackground';
-import NavSidebar from '../components/NavSidebar';
 
 function ClassCard({ classroom, index }) {
     const { ref, style, onMouseMove, onMouseLeave } = useMagneticHover(4);
@@ -19,49 +19,78 @@ function ClassCard({ classroom, index }) {
         addToast('Classroom ID copied!', 'success');
     };
 
+    const initial = (classroom.name || 'C')[0].toUpperCase();
+
     return (
         <a
             ref={ref}
             href={`/?classroomId=${classroom.id}&classroomName=${encodeURIComponent(classroom.name)}`}
             onClick={(e) => { e.preventDefault(); navigate(`/?classroomId=${classroom.id}&classroomName=${encodeURIComponent(classroom.name)}`); }}
+            onMouseMove={onMouseMove}
+            onMouseLeave={onMouseLeave}
+            className="block relative no-underline text-white transition-all duration-150"
             style={{
                 ...style,
                 opacity: 0,
                 animation: `slide-up 0.5s cubic-bezier(0.22,1,0.36,1) ${index * 80}ms forwards`,
             }}
-            onMouseMove={onMouseMove}
-            onMouseLeave={onMouseLeave}
-            className="block rounded-xl p-6 border border-white/[0.04] relative overflow-hidden transition-shadow duration-300 group no-underline text-white hover:shadow-[0_0_30px_rgba(6,182,212,0.15)]"
         >
-            <div className="absolute top-0 left-[15%] right-[15%] h-px bg-gradient-to-r from-transparent via-white/[0.06] to-transparent" />
-            {/* Hover border glow */}
-            <div className="absolute inset-0 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500"
-                style={{ background: 'conic-gradient(from 0deg, transparent, rgba(6,182,212,0.1), transparent, rgba(124,58,237,0.08), transparent)', padding: '1px' }} />
-
-            <div className="relative" style={{ background: 'rgba(17,24,39,0.6)', backdropFilter: 'blur(24px)', borderRadius: 'inherit', margin: '-24px', padding: '24px' }}>
-                {/* Icon */}
-                <div className="w-11 h-11 rounded-xl flex items-center justify-center mb-4"
-                    style={{ background: 'linear-gradient(135deg, #06B6D4, #0891B2)', boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.25), 0 4px 12px -4px rgba(0,0,0,0.5)' }}>
-                    <svg className="w-5 h-5 text-black" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" /><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" /></svg>
+            <div className="relative overflow-hidden"
+                style={{
+                    background: '#1A1A1A',
+                    border: '1px solid #2A2A2A',
+                    borderLeft: '3px solid #E8FF47',
+                    borderRadius: '2px',
+                    padding: '24px',
+                    transition: 'border-color 0.15s ease',
+                }}
+                onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#E8FF47'; }}
+                onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#2A2A2A'; e.currentTarget.style.borderLeftColor = '#E8FF47'; }}
+            >
+                {/* Watermark letter */}
+                <div style={{
+                    fontFamily: 'var(--font-display)',
+                    fontSize: '180px',
+                    color: '#1E1E1E',
+                    position: 'absolute',
+                    bottom: '-20px',
+                    right: '16px',
+                    lineHeight: 1,
+                    pointerEvents: 'none',
+                    userSelect: 'none',
+                    zIndex: 0,
+                }}>
+                    {initial}
                 </div>
 
-                <div className="text-sm font-bold mb-1 tracking-tight">{classroom.name}</div>
-                <div className="flex items-center gap-2 mb-4">
-                    <span className="text-[11px] text-text-muted font-mono tracking-wide">{classroom.id}</span>
-                    <button onClick={copyId} className="text-[10px] text-cyan hover:text-white transition-colors font-semibold">Copy</button>
-                </div>
+                {/* Card content */}
+                <div className="relative" style={{ zIndex: 1 }}>
+                    <div className="mb-1" style={{ fontFamily: 'var(--font-display)', fontSize: '28px', letterSpacing: '1px', color: '#F5F5F5' }}>{classroom.name}</div>
+                    <div className="flex items-center gap-2 mb-4">
+                        <span className="text-[11px] font-mono" style={{ color: '#666', letterSpacing: '1px' }}>{classroom.id}</span>
+                        <button onClick={copyId} className="text-[11px] font-medium transition-colors" style={{ color: '#E8FF47', background: 'none', border: 'none' }}>Copy</button>
+                    </div>
 
-                <div className="flex gap-5">
-                    {[
-                        { v: classroom.students || 0, l: 'Students' },
-                        { v: classroom.sessions || 0, l: 'Sessions' },
-                        { v: classroom.lang, l: 'Language' },
-                    ].map((s, i) => (
-                        <div key={i}>
-                            <div className="text-base font-extrabold text-cyan tabular-nums">{s.v}</div>
-                            <div className="text-[10px] text-text-muted uppercase tracking-wider mt-0.5">{s.l}</div>
-                        </div>
-                    ))}
+                    <div className="flex gap-5 items-end">
+                        {[
+                            { v: classroom.students || 0, l: 'Students' },
+                            { v: classroom.sessions || 0, l: 'Sessions' },
+                        ].map((s, i) => (
+                            <div key={i}>
+                                <div style={{ fontFamily: 'var(--font-display)', fontSize: '24px', color: s.v === 0 ? '#333' : '#F5F5F5' }}>{s.v}</div>
+                                <div className="mt-0.5" style={{ fontFamily: 'var(--font-sans)', fontSize: '9px', letterSpacing: '3px', textTransform: 'uppercase', color: '#666' }}>{s.l}</div>
+                            </div>
+                        ))}
+                        {classroom.lang && (
+                            <div>
+                                <span className="inline-block px-2 py-0.5" style={{
+                                    background: 'transparent', border: '1px solid #2A2A2A', borderRadius: '2px',
+                                    fontSize: '10px', color: '#555', fontFamily: 'var(--font-sans)', fontWeight: 600,
+                                    letterSpacing: '1px', textTransform: 'uppercase',
+                                }}>{classroom.lang}</span>
+                            </div>
+                        )}
+                    </div>
                 </div>
             </div>
         </a>
@@ -71,33 +100,58 @@ function ClassCard({ classroom, index }) {
 export default function ClassroomsPage() {
     const { user, logout } = useAuth();
     const navigate = useNavigate();
+    const { addToast } = useToast();
 
     useEffect(() => {
         if (!user || user.role !== 'teacher') navigate('/auth');
     }, [user, navigate]);
 
-    const storageKey = `synapse_classrooms_${user?.email?.replace(/[^a-z0-9]/gi, '_') || 'default'}`;
-    const [classrooms, setClassrooms] = useState(() => JSON.parse(localStorage.getItem(storageKey) || '[]'));
+    const [classrooms, setClassrooms] = useState([]);
+    const [loading, setLoading] = useState(true);
     const [showModal, setShowModal] = useState(false);
     const [formName, setFormName] = useState('');
     const [formLang, setFormLang] = useState('python');
     const [formBatch, setFormBatch] = useState('');
 
-    const genId = (n) => {
-        const prefix = (n || 'CLASS').replace(/[^a-zA-Z0-9]/g, '').substring(0, 6).toUpperCase();
-        const rand = Math.random().toString(36).substring(2, 6).toUpperCase();
-        return `${prefix}-${new Date().getFullYear()}-${rand}`;
-    };
+    // Fetch classrooms from backend on mount
+    useEffect(() => {
+        (async () => {
+            try {
+                const data = await API.getClassrooms();
+                setClassrooms(Array.isArray(data) ? data : []);
+            } catch {
+                // Fallback to localStorage
+                const storageKey = `synapse_classrooms_${user?.email?.replace(/[^a-z0-9]/gi, '_') || 'default'}`;
+                setClassrooms(JSON.parse(localStorage.getItem(storageKey) || '[]'));
+            }
+            setLoading(false);
+        })();
+    }, [user]);
 
-    const createClassroom = () => {
+    const createClassroom = async () => {
         if (!formName.trim()) return;
-        const id = genId(formName);
-        const updated = [...classrooms, { id, name: formName.trim(), lang: formLang, batch: formBatch, students: 0, sessions: 0, createdAt: Date.now() }];
-        localStorage.setItem(storageKey, JSON.stringify(updated));
-        setClassrooms(updated);
+
+        try {
+            const created = await API.createClassroom({
+                name: formName.trim(),
+                lang: formLang,
+                batch: formBatch,
+            });
+            setClassrooms(prev => [...prev, created]);
+            addToast('Classroom created!', 'success');
+        } catch {
+            addToast('Failed to create classroom', 'error');
+        }
+
         setShowModal(false);
         setFormName(''); setFormBatch('');
     };
+
+    if (loading) return (
+        <div className="h-screen flex items-center justify-center" style={{ background: '#0D0D0D' }}>
+            <div className="w-8 h-8 border-2 border-[#E8FF4730] border-t-[#E8FF47] rounded-full animate-spin" />
+        </div>
+    );
 
     return (
         <div className="min-h-screen relative">
@@ -105,43 +159,49 @@ export default function ClassroomsPage() {
             <AuroraBackground />
 
             {/* Topbar */}
-            <header className="sticky top-0 z-30 flex items-center justify-between px-7 py-4 border-b border-white/[0.04]"
-                style={{ background: 'rgba(5,5,12,0.45)', backdropFilter: 'blur(24px) saturate(120%)', boxShadow: 'inset 0 1px 1px rgba(255,255,255,0.06)' }}>
+            <header className="sticky top-0 z-30 flex items-center justify-between px-7 py-4"
+                style={{ background: '#0D0D0D', borderBottom: '1px solid #1E1E1E' }}>
                 <div className="flex items-center gap-2.5">
-                    <div className="w-8 h-8 rounded-lg flex items-center justify-center text-sm font-black text-black"
-                        style={{ background: 'linear-gradient(135deg, #06B6D4, #0891B2)' }}>S</div>
-                    <span className="text-sm font-bold tracking-tight">Synapse</span>
+                    <div className="w-5 h-5 flex items-center justify-center" style={{ background: '#E8FF47', borderRadius: '1px' }}>
+                        <span className="text-[10px] font-black text-[#0D0D0D]">S</span>
+                    </div>
+                    <span style={{ fontFamily: 'var(--font-display)', fontSize: '22px', letterSpacing: '2px', color: '#F5F5F5' }}>Synapse</span>
                 </div>
                 <div className="flex items-center gap-4">
-                    <span className="text-xs text-text-muted">{user?.name || user?.email}</span>
-                    <button onClick={logout} className="text-xs text-text-muted hover:text-white transition-colors bg-white/[0.03] border border-white/[0.06] px-3.5 py-1.5 rounded-lg font-semibold">Sign Out</button>
+                    <span className="text-[13px]" style={{ color: '#666', fontFamily: 'var(--font-sans)' }}>{user?.name || user?.email}</span>
+                    <button onClick={logout}
+                        className="text-xs font-medium px-3.5 py-1.5 transition-all duration-150"
+                        style={{ border: '1px solid #2A2A2A', borderRadius: '2px', background: 'transparent', color: '#666', fontFamily: 'var(--font-sans)' }}
+                        onMouseEnter={e => { e.currentTarget.style.borderColor = '#E8FF47'; e.currentTarget.style.color = '#E8FF47'; }}
+                        onMouseLeave={e => { e.currentTarget.style.borderColor = '#2A2A2A'; e.currentTarget.style.color = '#666'; }}
+                    >Sign Out</button>
                 </div>
             </header>
 
-            <main className="max-w-5xl mx-auto px-6 py-11 relative z-10">
+            <main className="max-w-5xl mx-auto px-6 py-11 relative z-10 page-content">
                 <div className="flex items-end justify-between mb-9">
                     <div>
-                        <h1 className="text-3xl font-black tracking-tight mb-1.5">My Classrooms</h1>
-                        <p className="text-sm text-text-muted">Each classroom gets a unique ID students enter in VS Code.</p>
+                        <h1 style={{ fontFamily: 'var(--font-display)', fontSize: '52px', letterSpacing: '3px', lineHeight: 1, color: '#F5F5F5' }}>MY CLASSROOMS</h1>
+                        <p className="mt-2" style={{ fontFamily: 'var(--font-sans)', fontSize: '14px', color: '#666' }}>Each classroom gets a unique ID students enter in VS Code.</p>
                     </div>
                     <button onClick={() => setShowModal(true)}
-                        className="px-5 py-2.5 rounded-xl text-sm font-extrabold text-black transition-all duration-200 hover:scale-[1.03] active:scale-[0.97] relative overflow-hidden group"
-                        style={{ background: 'linear-gradient(180deg, #22D3EE, #06B6D4)', boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.25), 0 12px 32px -8px rgba(0,0,0,0.5)' }}>
-                        {/* Rotating border animation */}
-                        <span className="absolute inset-0 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity"
-                            style={{ background: 'conic-gradient(from var(--angle, 0deg), transparent, rgba(255,255,255,0.15), transparent)', animation: 'spin 3s linear infinite' }} />
-                        <span className="relative">+ New Classroom</span>
+                        className="px-5 py-2.5 text-[14px] font-semibold transition-all duration-150"
+                        style={{ background: '#E8FF47', color: '#0D0D0D', borderRadius: '2px', border: 'none', fontFamily: 'var(--font-sans)' }}
+                        onMouseEnter={e => e.currentTarget.style.background = '#D4EB3A'}
+                        onMouseLeave={e => e.currentTarget.style.background = '#E8FF47'}
+                    >
+                        + New Classroom
                     </button>
                 </div>
 
                 {classrooms.length === 0 ? (
                     <div className="text-center py-24 animate-fade-in">
-                        <svg className="w-14 h-14 mx-auto mb-4 text-text-muted" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" /><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" /></svg>
-                        <h2 className="text-xl font-extrabold mb-2">No classrooms yet</h2>
-                        <p className="text-sm text-text-muted mb-7">Create your first classroom and share the ID with your students.</p>
+                        <div style={{ fontFamily: 'var(--font-display)', fontSize: '120px', color: '#1E1E1E', lineHeight: 1 }}>0</div>
+                        <h2 className="text-xl font-semibold mb-2" style={{ color: '#F5F5F5', fontFamily: 'var(--font-sans)' }}>No classrooms yet</h2>
+                        <p className="text-sm mb-7" style={{ color: '#444', fontFamily: 'var(--font-sans)' }}>Create your first classroom and share the ID with your students.</p>
                         <button onClick={() => setShowModal(true)}
-                            className="px-5 py-2.5 rounded-xl text-sm font-extrabold text-black hover:scale-[1.03] active:scale-[0.97] transition-all"
-                            style={{ background: 'linear-gradient(180deg, #22D3EE, #06B6D4)' }}>
+                            className="px-5 py-2.5 text-sm font-semibold transition-all"
+                            style={{ background: '#E8FF47', color: '#0D0D0D', borderRadius: '2px', border: 'none' }}>
                             + Create your first classroom
                         </button>
                     </div>
@@ -156,46 +216,48 @@ export default function ClassroomsPage() {
             {showModal && (
                 <div className="fixed inset-0 flex items-center justify-center z-50" style={{ background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(8px)' }} onClick={() => setShowModal(false)}>
                     <div onClick={e => e.stopPropagation()}
-                        className="rounded-2xl p-9 w-full max-w-md relative border border-white/[0.06] animate-slide-up"
-                        style={{ background: 'rgba(8,8,16,0.85)', backdropFilter: 'blur(48px) saturate(140%)', boxShadow: 'inset 0 1px 1px rgba(255,255,255,0.08), 0 40px 80px -16px rgba(0,0,0,0.75)' }}>
-                        <div className="absolute top-0 left-[14%] right-[14%] h-px bg-gradient-to-r from-transparent via-white/[0.08] to-transparent" />
-                        <button onClick={() => setShowModal(false)} className="absolute top-5 right-5 w-7 h-7 rounded-md bg-white/[0.03] border border-white/[0.06] flex items-center justify-center text-text-muted hover:text-danger hover:border-danger/20 transition-all">
+                        className="p-9 w-full max-w-md relative animate-slide-up"
+                        style={{ background: '#1A1A1A', border: '1px solid #2A2A2A', borderRadius: '2px' }}>
+                        <button onClick={() => setShowModal(false)} className="absolute top-5 right-5 w-7 h-7 flex items-center justify-center transition-all"
+                            style={{ background: 'transparent', border: '1px solid #2A2A2A', borderRadius: '2px', color: '#444' }}
+                            onMouseEnter={e => { e.currentTarget.style.borderColor = '#EF4444'; e.currentTarget.style.color = '#EF4444'; }}
+                            onMouseLeave={e => { e.currentTarget.style.borderColor = '#2A2A2A'; e.currentTarget.style.color = '#444'; }}>
                             <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
                         </button>
 
-                        <h2 className="text-xl font-extrabold tracking-tight mb-1.5">Create Classroom</h2>
-                        <p className="text-xs text-text-muted mb-7">Students enter this ID in the Synapse extension to join.</p>
+                        <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '28px', letterSpacing: '2px', color: '#F5F5F5', marginBottom: '4px' }}>CREATE CLASSROOM</h2>
+                        <p className="text-xs mb-7" style={{ color: '#666', fontFamily: 'var(--font-sans)' }}>Students enter this ID in the Synapse extension to join.</p>
 
                         <div className="mb-4">
-                            <label className="block text-[11px] font-bold uppercase tracking-wider text-text-muted mb-1.5">Name</label>
+                            <label className="block text-[10px] font-medium uppercase mb-1.5" style={{ letterSpacing: '3px', color: '#666', fontFamily: 'var(--font-sans)' }}>Name</label>
                             <input type="text" value={formName} onChange={e => setFormName(e.target.value)} placeholder="e.g. Python Bootcamp Batch 12"
-                                className="w-full bg-white/[0.03] border border-white/[0.06] rounded-lg px-3.5 py-2.5 text-sm text-white outline-none focus:border-cyan/40 focus:ring-2 focus:ring-cyan/10 transition-all placeholder:text-text-muted" />
+                                className="w-full px-3.5 py-2.5 text-sm outline-none transition-all"
+                                style={{ background: '#0D0D0D', border: '1px solid #2A2A2A', borderRadius: '2px', color: '#F5F5F5', fontFamily: 'var(--font-sans)' }}
+                                onFocus={e => e.target.style.borderColor = '#E8FF47'}
+                                onBlur={e => e.target.style.borderColor = '#2A2A2A'} />
                         </div>
                         <div className="mb-4">
-                            <label className="block text-[11px] font-bold uppercase tracking-wider text-text-muted mb-1.5">Language</label>
+                            <label className="block text-[10px] font-medium uppercase mb-1.5" style={{ letterSpacing: '3px', color: '#666', fontFamily: 'var(--font-sans)' }}>Language</label>
                             <select value={formLang} onChange={e => setFormLang(e.target.value)}
-                                className="w-full bg-white/[0.03] border border-white/[0.06] rounded-lg px-3.5 py-2.5 text-sm text-white outline-none focus:border-cyan/40 transition-all">
-                                <option value="python" className="bg-[#0a0a14]">Python</option>
-                                <option value="javascript" className="bg-[#0a0a14]">JavaScript</option>
-                                <option value="java" className="bg-[#0a0a14]">Java</option>
+                                className="w-full px-3.5 py-2.5 text-sm outline-none transition-all"
+                                style={{ background: '#0D0D0D', border: '1px solid #2A2A2A', borderRadius: '2px', color: '#F5F5F5', fontFamily: 'var(--font-sans)' }}>
+                                <option value="python" style={{ background: '#0D0D0D' }}>Python</option>
+                                <option value="javascript" style={{ background: '#0D0D0D' }}>JavaScript</option>
+                                <option value="java" style={{ background: '#0D0D0D' }}>Java</option>
                             </select>
                         </div>
                         <div className="mb-5">
-                            <label className="block text-[11px] font-bold uppercase tracking-wider text-text-muted mb-1.5">Batch</label>
+                            <label className="block text-[10px] font-medium uppercase mb-1.5" style={{ letterSpacing: '3px', color: '#666', fontFamily: 'var(--font-sans)' }}>Batch</label>
                             <input type="text" value={formBatch} onChange={e => setFormBatch(e.target.value)} placeholder="e.g. Feb 2026"
-                                className="w-full bg-white/[0.03] border border-white/[0.06] rounded-lg px-3.5 py-2.5 text-sm text-white outline-none focus:border-cyan/40 focus:ring-2 focus:ring-cyan/10 transition-all placeholder:text-text-muted" />
+                                className="w-full px-3.5 py-2.5 text-sm outline-none transition-all"
+                                style={{ background: '#0D0D0D', border: '1px solid #2A2A2A', borderRadius: '2px', color: '#F5F5F5', fontFamily: 'var(--font-sans)' }}
+                                onFocus={e => e.target.style.borderColor = '#E8FF47'}
+                                onBlur={e => e.target.style.borderColor = '#2A2A2A'} />
                         </div>
 
-                        {formName.length > 2 && (
-                            <div className="mb-5 rounded-xl p-4 bg-cyan/[0.03] border border-cyan/[0.12] animate-fade-in">
-                                <div className="text-[10px] font-bold uppercase tracking-wider text-text-muted mb-1">Classroom ID (auto)</div>
-                                <div className="text-lg font-black text-cyan font-mono tracking-wide">{genId(formName)}</div>
-                            </div>
-                        )}
-
                         <button onClick={createClassroom}
-                            className="w-full py-3 rounded-xl text-sm font-extrabold text-black hover:scale-[1.03] active:scale-[0.97] transition-all"
-                            style={{ background: 'linear-gradient(180deg, #22D3EE, #06B6D4)', boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.25), 0 12px 32px -8px rgba(0,0,0,0.5)' }}>
+                            className="w-full py-3 text-sm font-semibold transition-all"
+                            style={{ background: '#E8FF47', color: '#0D0D0D', borderRadius: '2px', border: 'none', fontFamily: 'var(--font-sans)' }}>
                             Create Classroom
                         </button>
                     </div>

@@ -26,24 +26,25 @@ export function ToastProvider({ children }) {
 }
 
 const typeStyles = {
-    success: { bg: 'rgba(34,197,94,0.12)', border: 'rgba(34,197,94,0.25)', color: '#22C55E', barColor: '#22C55E' },
-    warning: { bg: 'rgba(245,158,11,0.12)', border: 'rgba(245,158,11,0.25)', color: '#F59E0B', barColor: '#F59E0B' },
+    success: { bg: 'rgba(74,222,128,0.12)', border: 'rgba(74,222,128,0.25)', color: '#4ADE80', barColor: '#4ADE80' },
+    warning: { bg: 'rgba(232,184,53,0.12)', border: 'rgba(232,184,53,0.25)', color: '#E8B835', barColor: '#E8B835' },
     error: { bg: 'rgba(239,68,68,0.12)', border: 'rgba(239,68,68,0.25)', color: '#EF4444', barColor: '#EF4444' },
-    info: { bg: 'rgba(6,182,212,0.12)', border: 'rgba(6,182,212,0.25)', color: '#06B6D4', barColor: '#06B6D4' },
+    info: { bg: 'rgba(232,255,71,0.12)', border: 'rgba(232,255,71,0.25)', color: '#E8FF47', barColor: '#E8FF47' },
 };
 
 function ToastItem({ toast }) {
     const s = typeStyles[toast.type] || typeStyles.info;
     return (
         <div
-            className="rounded-xl px-4 py-3 min-w-[280px] max-w-[380px] relative overflow-hidden backdrop-blur-xl animate-slide-up"
+            className="px-4 py-3 min-w-[280px] max-w-[380px] relative overflow-hidden animate-slide-up"
             style={{
                 background: s.bg,
                 border: `1px solid ${s.border}`,
-                boxShadow: '0 24px 48px -12px rgba(0,0,0,0.5)',
+                borderRadius: '2px',
+                backdropFilter: 'blur(12px)',
             }}
         >
-            <p className="text-sm font-semibold" style={{ color: s.color }}>{toast.message}</p>
+            <p className="text-sm font-medium" style={{ color: s.color, fontFamily: 'var(--font-sans)' }}>{toast.message}</p>
             {/* Draining progress bar */}
             <div className="absolute bottom-0 left-0 h-0.5 w-full" style={{ background: 'rgba(255,255,255,0.05)' }}>
                 <div

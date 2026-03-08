@@ -8,31 +8,30 @@ export default function StudentRow({ student, delay = 0, isHighlighted = false }
     return (
         <div
             ref={ref}
-            className={`
-        flex items-start justify-between gap-3 p-4 rounded-xl border transition-all duration-200 group
-        ${isHighlighted ? 'border-cyan/20 bg-cyan/[0.04]' : 'border-white/[0.04] bg-white/[0.015]'}
-        hover:bg-white/[0.03] hover:translate-x-1
-      `}
+            className="flex items-start justify-between gap-3 p-4 transition-all duration-200 group"
             style={{
+                borderBottom: '1px solid #1E1E1E',
                 opacity: isVisible ? 1 : 0,
                 transform: isVisible ? 'translateX(0)' : 'translateX(-20px)',
                 transition: `all 0.4s cubic-bezier(0.22,1,0.36,1) ${delay}ms`,
-                backgroundImage: isHighlighted ? 'linear-gradient(90deg, rgba(6,182,212,0.04), transparent)' : undefined,
             }}
+            onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.02)'}
+            onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
         >
             <div className="flex-1 min-w-0">
-                <div className="text-sm font-bold mb-1">{student.name}</div>
-                <div className="text-xs text-text-muted">
+                <div style={{ fontFamily: 'var(--font-sans)', fontSize: '14px', fontWeight: 600, color: '#F5F5F5', marginBottom: '4px' }}>{student.name}</div>
+                <div style={{ fontFamily: 'var(--font-sans)', fontSize: '12px', color: '#555' }}>
                     {student.errorType} · {student.attempts}x (class avg {student.classAvg}x) · {student.lastSeen}
                 </div>
             </div>
             <span
-                className={`
-          text-[10px] font-bold px-2.5 py-1 rounded-full whitespace-nowrap shrink-0
-          ${needsIntervention
-                        ? 'bg-danger/[0.08] text-danger border border-danger/[0.16] animate-pulse-glow'
-                        : 'bg-cyan/[0.08] text-cyan border border-cyan/[0.16]'}
-        `}
+                className={`text-[10px] font-medium px-2.5 py-1 whitespace-nowrap shrink-0 ${needsIntervention ? 'animate-pulse-glow' : ''}`}
+                style={{
+                    background: needsIntervention ? 'rgba(255,107,53,0.15)' : student.action?.includes('quiz') ? 'rgba(232,255,71,0.1)' : 'rgba(255,107,53,0.1)',
+                    color: needsIntervention ? '#FF6B35' : student.action?.includes('quiz') ? '#E8FF47' : '#FF6B35',
+                    border: needsIntervention ? '1px solid rgba(255,107,53,0.3)' : student.action?.includes('quiz') ? '1px solid rgba(232,255,71,0.2)' : '1px solid rgba(255,107,53,0.2)',
+                    borderRadius: '2px',
+                }}
             >
                 {student.action}
             </span>

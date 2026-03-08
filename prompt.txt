@@ -1,0 +1,392 @@
+You are redesigning the Synapse educator dashboard application. The current UI looks generic and AI-generated. Your job is to transform every screen into something visually distinctive, intentional, and memorable — while keeping all existing functionality 100% intact.
+
+Do NOT change any logic, routing, data fetching, or backend connections. Only change visual/styling code.
+
+---
+
+## CURRENT PROBLEMS TO FIX
+
+The current UI has these specific issues you must eliminate:
+- Dark navy + cyan color palette (overused "AI SaaS" look)
+- Floating particle dots background (extremely clichéd)
+- Generic uniform card grid with identical padding/shadows everywhere
+- System/Inter font with no typographic personality
+- Symmetric, safe, centered layouts with no visual tension
+- Flat stat cards that look templated
+- Empty Students page with no content structure
+
+---
+
+## NEW DESIGN DIRECTION
+
+### Color Palette — Replace entirely with:
+- Background primary: #0D0D0D (near black, warmer than current navy)
+- Background secondary: #141414
+- Background card: #1A1A1A with border: 1px solid #2A2A2A
+- Accent primary: #E8FF47 (electric yellow-green — sharp, distinctive)
+- Accent secondary: #FF6B35 (burnt orange — for warnings/at-risk)
+- Accent success: #4ADE80 (green — for good metrics)
+- Text primary: #F5F5F5
+- Text secondary: #888888
+- Text muted: #444444
+
+Remove ALL cyan (#00BCD4 or similar) and replace with the above palette.
+
+### Typography — Replace entirely with:
+- Install and import from Google Fonts:
+  - "Bebas Neue" — for all page titles, big stat numbers, section headers
+  - "DM Sans" — for body text, labels, nav items, descriptions
+- Page titles (Overview, Heatmap, etc.): Bebas Neue, 52px, letter-spacing: 2px
+- Big stat numbers (1,847 / 27 / 34): Bebas Neue, 64px
+- Nav items: DM Sans, 13px, font-weight: 500
+- Card labels (TOTAL DEBUG SESSIONS, etc.): DM Sans, 10px, letter-spacing: 3px, uppercase
+- Body/descriptions: DM Sans, 14px
+
+Add this to your HTML head or CSS import:
+@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&display=swap');
+
+### Background — Replace particle dots with:
+Remove the particle/dot canvas animation entirely.
+Replace with a CSS-only background on the root/body:
+  background-color: #0D0D0D;
+  background-image: 
+    linear-gradient(rgba(232, 255, 71, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(232, 255, 71, 0.03) 1px, transparent 1px);
+  background-size: 40px 40px;
+This creates a subtle technical grid that feels intentional, not generated.
+
+---
+
+## SCREEN-BY-SCREEN INSTRUCTIONS
+
+### 1. AUTH PAGE (/auth)
+
+Current: Split layout, marketing text left, form right, particle background.
+
+New design:
+- Full-bleed single column, centered, no split
+- Background: the grid pattern from above
+- Top: Synapse logo mark — make it larger, 48px, with a small yellow-green square icon
+- Headline: "DEBUGGING INTELLIGENCE" in Bebas Neue, 72px, white
+- Subheadline: "for Educators" in DM Sans, 20px, color #888888
+- Remove the bullet point feature list entirely — replace with one single line: 
+  "See exactly where students struggle — before they ask for help." in DM Sans italic, #666
+- The form card:
+  - background: #1A1A1A
+  - border: 1px solid #2A2A2A
+  - border-radius: 2px (sharp corners — not the current rounded look)
+  - padding: 40px
+  - max-width: 420px
+- Sign In / Sign Up tabs: 
+  - Remove the current pill/toggle style
+  - Use two plain text buttons with a bottom border indicator
+  - Active tab: color #E8FF47, border-bottom: 2px solid #E8FF47
+  - Inactive tab: color #666, no border
+- Demo Teacher / Demo Student buttons:
+  - border: 1px solid #2A2A2A
+  - background: transparent
+  - color: #888
+  - border-radius: 2px
+  - On hover: border-color: #E8FF47, color: #E8FF47
+- Input fields:
+  - background: #0D0D0D
+  - border: 1px solid #2A2A2A
+  - border-radius: 2px
+  - color: #F5F5F5
+  - On focus: border-color: #E8FF47, outline: none
+  - Label: DM Sans, 10px, letter-spacing: 3px, uppercase, color: #666
+- Sign In submit button:
+  - background: #E8FF47
+  - color: #0D0D0D
+  - font-family: DM Sans, font-weight: 600, font-size: 14px, letter-spacing: 1px
+  - border-radius: 2px
+  - height: 48px
+  - On hover: background: #D4EB3A
+
+---
+
+### 2. CLASSROOMS PAGE (/classrooms)
+
+Current: Top nav, page title, classroom cards in a grid.
+
+New design:
+- Top navbar:
+  - background: #0D0D0D
+  - border-bottom: 1px solid #1E1E1E
+  - Logo text "Synapse" in Bebas Neue, 22px, letter-spacing: 2px
+  - "Demo Teacher" name in DM Sans, 13px, color #666
+  - "Sign Out" button: border: 1px solid #2A2A2A, color: #666, border-radius: 2px, background: transparent
+  - On hover: border-color: #E8FF47, color: #E8FF47
+- Page title "MY CLASSROOMS": Bebas Neue, 52px, letter-spacing: 3px
+- Subtitle: DM Sans, 14px, color: #666
+- "+ New Classroom" button:
+  - background: #E8FF47
+  - color: #0D0D0D
+  - font-weight: 600
+  - border-radius: 2px
+  - No icon, just text
+- Classroom cards:
+  - background: #1A1A1A
+  - border: 1px solid #2A2A2A
+  - border-radius: 2px (sharp)
+  - On hover: border-color: #E8FF47
+  - Top accent bar: 3px solid #E8FF47 on the left side (border-left), not the icon
+  - Remove the teal book icon — replace with a large Bebas Neue letter representing the classroom initial
+  - Classroom name: Bebas Neue, 28px, white
+  - Classroom ID: DM Sans, 11px, color: #666, letter-spacing: 1px
+  - "Copy" text link: color: #E8FF47, no background
+  - Stats (0 STUDENTS, 0 SESSIONS): 
+    - Number in Bebas Neue, 24px, white
+    - Label in DM Sans, 9px, letter-spacing: 3px, uppercase, color: #666
+  - Language badge: 
+    - background: #0D0D0D
+    - border: 1px solid #2A2A2A
+    - color: #888
+    - font-size: 11px
+    - border-radius: 2px
+    - padding: 2px 8px
+
+---
+
+### 3. SIDEBAR (used in all classroom inner pages)
+
+Current: Dark panel, cyan active state, generic icons.
+
+New design:
+- background: #111111
+- border-right: 1px solid #1E1E1E
+- Logo "SYNAPSE": Bebas Neue, 20px, letter-spacing: 3px, color: #F5F5F5
+- Logo icon: small yellow-green square (#E8FF47), 8px x 8px
+- Nav items:
+  - DM Sans, 13px, font-weight: 500
+  - color: #555 (inactive)
+  - padding: 10px 20px
+  - border-left: 3px solid transparent (inactive)
+  - No background highlight on inactive
+- Active nav item:
+  - color: #E8FF47
+  - border-left: 3px solid #E8FF47
+  - background: rgba(232, 255, 71, 0.05)
+- Hover state:
+  - color: #F5F5F5
+  - border-left: 3px solid #333
+- Icons: keep the same icons but change their color to match the text state
+- "Sign Out" at bottom: DM Sans, 12px, color: #444, no border, on hover: color: #E8FF47
+- Remove any separators/dividers between nav items — use spacing only
+
+---
+
+### 4. HEADER BAR (top of classroom pages)
+
+Current: "← Classrooms" link, page title, Active Today + Total Students on the right.
+
+New design:
+- background: #0D0D0D
+- border-bottom: 1px solid #1E1E1E
+- "← Classrooms": DM Sans, 12px, color: #555, arrow and text, on hover: color: #E8FF47
+- Page title: Bebas Neue, 42px, letter-spacing: 2px, color: #F5F5F5
+- Subtitle (Full Stack Cohort 12 · Week 3): DM Sans, 12px, color: #555
+- Right side stats:
+  - "27" and "34": Bebas Neue, 36px
+  - "27" (active today): color: #E8FF47
+  - "34" (total): color: #F5F5F5
+  - Labels: DM Sans, 9px, letter-spacing: 3px, uppercase, color: #555
+  - Separate them with a 1px vertical line: border-right: 1px solid #1E1E1E
+
+---
+
+### 5. OVERVIEW PAGE
+
+Current: 4 uniform stat cards in a row, two equal panels below.
+
+New design for stat cards:
+- Remove equal-width grid — use CSS grid: grid-template-columns: 2fr 1fr 1fr 1.5fr
+- This makes "Total Debug Sessions" and "At-Risk Students" more prominent
+- Each card:
+  - background: #1A1A1A
+  - border: 1px solid #2A2A2A
+  - border-radius: 2px
+  - padding: 28px
+- Card label: DM Sans, 9px, letter-spacing: 3px, uppercase, color: #555
+- Big number: Bebas Neue, 64px, line-height: 1
+  - Total Debug Sessions: color: #F5F5F5
+  - Avg Fix Time: color: #F5F5F5
+  - Quiz Completion Rate: color: #4ADE80
+  - At-Risk Students: color: #FF6B35
+- Sub-label (+12% vs last week / cohort average): DM Sans, 12px, color: #555
+- Keep the sparkline charts but change their colors:
+  - Debug sessions line: #E8FF47
+  - Fix time line: #888
+  - Quiz rate line: #4ADE80
+  - At-risk line: #FF6B35
+- At-Risk card gets a subtle left border: border-left: 3px solid #FF6B35
+
+"Top Struggles This Week" panel:
+- background: #1A1A1A, border: 1px solid #2A2A2A, border-radius: 2px
+- Title: Bebas Neue, 22px, letter-spacing: 1px
+- "See all" link: DM Sans, 12px, color: #E8FF47
+- Each struggle row:
+  - Concept name: DM Sans, 14px, font-weight: 500, color: #F5F5F5
+  - Crash % badge: background: rgba(255,107,53,0.15), color: #FF6B35, border: 1px solid rgba(255,107,53,0.3), border-radius: 2px, font-size: 11px
+  - Fix time badge: background: #1A1A1A, color: #888, border: 1px solid #2A2A2A
+  - Quiz % badge: background: rgba(74,222,128,0.1), color: #4ADE80, border: 1px solid rgba(74,222,128,0.2)
+  - Progress bar: height: 4px, background: #222, bar fill uses color based on severity (red → yellow → green)
+  - Divider between rows: 1px solid #1E1E1E
+
+"Students Needing Attention" panel:
+- Same card style as above
+- Each student row:
+  - Name: DM Sans, 14px, font-weight: 600, color: #F5F5F5
+  - Detail line: DM Sans, 12px, color: #555
+  - "1-on-1 recommended" badge: background: rgba(255,107,53,0.15), color: #FF6B35, border: 1px solid rgba(255,107,53,0.3), border-radius: 2px
+  - "Quiz not started" badge: background: rgba(232,255,71,0.1), color: #E8FF47, border: 1px solid rgba(232,255,71,0.2)
+  - "Below 40% quiz rate" badge: background: rgba(255,107,53,0.1), color: #FF6B35
+  - Row divider: 1px solid #1E1E1E
+  - Row hover: background: rgba(255,255,255,0.02)
+
+---
+
+### 6. STRUGGLE HEATMAP PAGE
+
+Current: Simple ranked list with colored bars.
+
+New design:
+- Title: Bebas Neue, 52px
+- Subtitle: DM Sans, 13px, color: #555
+- Container: background: #1A1A1A, border: 1px solid #2A2A2A, border-radius: 2px
+- Column headers above the list (add these): 
+  "CONCEPT" | "ATTEMPTS" | "CRASH RATE" | "AVG FIX" | "QUIZ RATE"
+  DM Sans, 9px, letter-spacing: 3px, uppercase, color: #444
+  border-bottom: 1px solid #1E1E1E
+- Each row:
+  - padding: 20px 28px
+  - border-bottom: 1px solid #1E1E1E
+  - Last row: no border
+  - Row number: Bebas Neue, 32px, color: #2A2A2A (large and faint — decorative)
+  - Concept name: DM Sans, 15px, font-weight: 600, color: #F5F5F5
+  - Progress bar: height: 6px, background: #222, border-radius: 0px (sharp)
+    - Rank 1 bar: #FF6B35
+    - Rank 2 bar: #FF8C35
+    - Rank 3 bar: #E8B835
+    - Rank 4-5 bars: #E8FF47
+  - Attempts number: Bebas Neue, 28px, color: #F5F5F5
+  - Crash %: Bebas Neue, 28px, color: #FF6B35 (if >50%), #E8B835 (30-50%), #4ADE80 (<30%)
+  - Fix time: DM Sans, 13px, color: #888
+  - Quiz %: DM Sans, 13px, color: #888
+  - Row hover: background: rgba(255,255,255,0.02), cursor: pointer
+
+---
+
+### 7. MASTERY TRACKING PAGE
+
+Current: Progress bars with %, benchmark line.
+
+New design:
+- Title: Bebas Neue, 52px
+- Container: background: #1A1A1A, border: 1px solid #2A2A2A, border-radius: 2px, padding: 32px
+- Section title "CONCEPT MASTERY TRACKING": Bebas Neue, 22px, letter-spacing: 2px
+- Subtitle: DM Sans, 13px, color: #555
+- Each concept row:
+  - Concept name: DM Sans, 14px, font-weight: 500, color: #F5F5F5
+  - Progress bar: height: 8px, background: #222, border-radius: 0
+    - Color by score: ≥80%: #4ADE80, 60-79%: #E8FF47, 40-59%: #E8B835, <40%: #FF6B35
+  - Score: Bebas Neue, 28px, matching bar color
+  - Benchmark marker: a small vertical notch on the bar (keep existing behavior)
+  - Target label (/ 70%): DM Sans, 11px, color: #444
+  - Row padding: 16px 0, border-bottom: 1px solid #1E1E1E
+
+---
+
+### 8. HOMEWORK PAGE
+
+Current: Assignment cards with progress bars, Open/Close badges.
+
+New design:
+- Title: Bebas Neue, 52px
+- Container: background: #1A1A1A, border: 1px solid #2A2A2A, border-radius: 2px
+- "HOMEWORK QUESTIONS" section header: Bebas Neue, 18px, letter-spacing: 2px
+- "+ New Question" button:
+  - border: 1px solid #E8FF47
+  - color: #E8FF47
+  - background: transparent
+  - border-radius: 2px
+  - On hover: background: rgba(232,255,71,0.1)
+- Each assignment card:
+  - border-left: 3px solid #E8FF47 (open) or #2A2A2A (closed)
+  - background: #141414
+  - padding: 20px 24px
+  - margin-bottom: 1px (tight stacking)
+  - Assignment name: DM Sans, 16px, font-weight: 600, color: #F5F5F5
+  - "Open" badge: background: rgba(74,222,128,0.15), color: #4ADE80, border: 1px solid rgba(74,222,128,0.3), border-radius: 2px, font-size: 10px, letter-spacing: 1px
+  - Due / Submissions / Avg attempts: DM Sans, 12px, color: #555
+  - Bold submission numbers (18/34): color: #E8FF47
+  - Progress bar: height: 4px, background: #222, fill: #E8FF47, border-radius: 0
+  - Submission %: DM Sans, 11px, color: #888
+  - Filename: DM Sans, 11px, color: #E8FF47 (like a link), font-family: monospace
+  - "Close" button: border: 1px solid #2A2A2A, color: #555, border-radius: 2px, on hover: border-color: #FF6B35, color: #FF6B35
+
+---
+
+### 9. STUDENTS PAGE (currently empty)
+
+This page shows "Students" as the title but renders nothing. Add this structure:
+- Keep the header as-is (with new styling)
+- Add a placeholder state:
+  - Centered in the page
+  - A large Bebas Neue "0" in color: #1E1E1E (decorative and faint), font-size: 200px
+  - Below it: DM Sans, 14px, color: #444 — "No students have joined this classroom yet."
+  - Below that: DM Sans, 12px, color: #333 — "Share the classroom ID with your students to get started."
+  - The classroom ID shown in a monospace code box: background: #111, border: 1px solid #2A2A2A, color: #E8FF47, padding: 8px 16px, border-radius: 2px
+
+---
+
+## MICRO-INTERACTIONS & POLISH
+
+Add these subtle animations via CSS (do not use JS animation libraries):
+
+1. Page transitions: Add a fade-in on all main content areas:
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.page-content { animation: fadeUp 0.25s ease forwards; }
+
+2. Card hover: All clickable cards get:
+transition: border-color 0.15s ease, background 0.15s ease;
+
+3. Button hover: All buttons get:
+transition: all 0.15s ease;
+
+4. Nav item active indicator:
+transition: border-left-color 0.15s ease, color 0.15s ease;
+
+5. Progress bars: Animate fill on mount:
+@keyframes barFill {
+  from { width: 0; }
+  to { width: var(--bar-width); }
+}
+Use CSS custom properties to set width dynamically.
+
+---
+
+## THINGS TO NEVER DO
+
+- Do NOT add gradients to buttons or cards (solid colors only)
+- Do NOT use border-radius higher than 4px anywhere
+- Do NOT use box-shadow (use borders instead for depth)
+- Do NOT use purple, blue, or cyan anywhere
+- Do NOT add any new icons or illustration libraries
+- Do NOT use animation libraries (framer-motion etc.) unless already in the project
+- Do NOT change routing, data fetching, state management, or any .ts/.js logic files
+- Do NOT change file/component structure — only modify styles
+
+---
+
+## HOW TO APPROACH THIS TASK
+
+1. First, identify where global styles/CSS variables are defined (likely a globals.css, index.css, or theme file). Update all color and font variables there first.
+2. Then go screen by screen in this order: Auth → Classrooms → Sidebar → Header → Overview → Heatmap → Mastery → Homework → Students.
+3. For each screen, find the component file, update className styles or CSS.
+4. If the project uses Tailwind: replace utility classes with the new palette. If it uses CSS modules or styled-components: update the style definitions directly.
+5. After each screen, verify nothing is broken functionally.
+6. Do a final pass to ensure font imports are loading, all cyan/blue has been replaced, and the grid background is showing correctly on all pages.

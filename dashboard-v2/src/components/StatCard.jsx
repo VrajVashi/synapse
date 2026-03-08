@@ -2,7 +2,7 @@ import { useCountUp } from '../hooks/useCountUp';
 import { useIntersectionObserver } from '../hooks/useIntersectionObserver';
 
 // Mini sparkline SVG
-function Sparkline({ data = [3, 7, 4, 8, 5, 9, 6], color = '#06B6D4' }) {
+function Sparkline({ data = [3, 7, 4, 8, 5, 9, 6], color = '#E8FF47' }) {
     const max = Math.max(...data);
     const min = Math.min(...data);
     const range = max - min || 1;
@@ -40,39 +40,57 @@ export default function StatCard({ label, value, unit, delta, deltaType, warn, s
     const { ref, isVisible } = useIntersectionObserver();
     const animated = useCountUp(typeof value === 'number' ? value : 0, 900, isVisible);
 
+    const valueColor = warn ? '#FF6B35' : label?.includes('Quiz') ? '#4ADE80' : '#F5F5F5';
+    const sparkColor = warn ? '#FF6B35' : label?.includes('Quiz') ? '#4ADE80' : label?.includes('Fix') ? '#888' : '#E8FF47';
+
+    // Color-coded top border (Enhancement 1)
+    const topBorderColor = warn ? '#FF6B35' : label?.includes('Quiz') ? '#4ADE80' : label?.includes('Fix') ? '#444' : '#E8FF47';
+
     return (
         <div
             ref={ref}
-            className="relative overflow-hidden rounded-xl p-6 border border-white/[0.06] transition-all duration-300 hover:-translate-y-1 group"
+            className="relative overflow-hidden p-7 transition-all duration-150"
             style={{
-                background: 'rgba(17,24,39,0.6)',
-                backdropFilter: 'blur(24px) saturate(120%)',
-                boxShadow: 'inset 0 1px 1px rgba(255,255,255,0.08), inset 0 0 0 1px rgba(255,255,255,0.03), 0 24px 48px -12px rgba(0,0,0,0.5)',
-                animationDelay: `${delay}ms`,
+                background: '#1A1A1A',
+                border: '1px solid #2A2A2A',
+                borderTop: `2px solid ${topBorderColor}`,
+                borderRadius: '2px',
                 opacity: isVisible ? 1 : 0,
                 transform: isVisible ? 'translateY(0)' : 'translateY(20px)',
-                transition: `opacity 0.5s cubic-bezier(0.22,1,0.36,1) ${delay}ms, transform 0.5s cubic-bezier(0.22,1,0.36,1) ${delay}ms`,
+                transition: `opacity 0.5s cubic-bezier(0.22,1,0.36,1) ${delay}ms, transform 0.5s cubic-bezier(0.22,1,0.36,1) ${delay}ms, border-color 0.15s ease, background 0.15s ease`,
             }}
         >
-            {/* Top edge light */}
-            <div className="absolute top-0 left-[14%] right-[14%] h-px bg-gradient-to-r from-transparent via-white/[0.06] to-transparent" />
-            {/* Hover glow */}
-            <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
-                style={{ boxShadow: '0 0 30px rgba(6,182,212,0.15)', borderRadius: 'inherit' }} />
-
-            <div className="text-[10px] font-semibold uppercase tracking-widest text-text-muted mb-3">{label}</div>
+            <div style={{
+                fontFamily: 'var(--font-sans)',
+                fontSize: '9px',
+                fontWeight: 500,
+                letterSpacing: '3px',
+                textTransform: 'uppercase',
+                color: '#555',
+                marginBottom: '12px',
+            }}>{label}</div>
             <div className="flex items-baseline gap-1">
-                <span className={`text-3xl font-black tracking-tight tabular-nums ${warn ? 'text-danger animate-pulse-glow' : 'text-cyan'}`}>
+                <span className={`tabular-nums ${warn ? 'animate-pulse-glow' : ''}`}
+                    style={{
+                        fontFamily: 'var(--font-display)',
+                        fontSize: '64px',
+                        lineHeight: 1,
+                        color: valueColor,
+                    }}>
                     {typeof value === 'number' ? animated.toLocaleString() : value}
                 </span>
-                {unit && <span className="text-sm font-semibold text-text-muted">{unit}</span>}
+                {unit && <span style={{ fontFamily: 'var(--font-sans)', fontSize: '14px', fontWeight: 500, color: '#555' }}>{unit}</span>}
             </div>
             {delta && (
-                <div className={`text-xs mt-2 ${deltaType === 'positive' ? 'text-success' : deltaType === 'warn' ? 'text-danger' : 'text-text-muted'}`}>
+                <div className="mt-2" style={{
+                    fontFamily: 'var(--font-sans)',
+                    fontSize: '12px',
+                    color: deltaType === 'positive' ? '#4ADE80' : deltaType === 'warn' ? '#FF6B35' : '#555',
+                }}>
                     {delta}
                 </div>
             )}
-            {sparkData && <Sparkline data={sparkData} color={warn ? '#EF4444' : '#06B6D4'} />}
+            {sparkData && <Sparkline data={sparkData} color={sparkColor} />}
         </div>
     );
 }

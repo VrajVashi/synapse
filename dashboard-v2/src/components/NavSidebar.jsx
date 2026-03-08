@@ -1,6 +1,4 @@
-import { NavLink, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { useRef, useEffect, useState } from 'react';
 
 const navItems = [
     { to: '/', view: 'overview', label: 'Overview', icon: <svg viewBox="0 0 24 24" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5" /><rect x="14" y="3" width="7" height="7" rx="1.5" /><rect x="3" y="14" width="7" height="7" rx="1.5" /><rect x="14" y="14" width="7" height="7" rx="1.5" /></svg> },
@@ -13,64 +11,72 @@ const navItems = [
 
 export default function NavSidebar({ activeView, onViewChange }) {
     const { logout } = useAuth();
-    const navRef = useRef(null);
-    const [indicatorTop, setIndicatorTop] = useState(0);
-
-    useEffect(() => {
-        if (!navRef.current) return;
-        const activeEl = navRef.current.querySelector(`[data-view="${activeView}"]`);
-        if (activeEl) {
-            setIndicatorTop(activeEl.offsetTop);
-        }
-    }, [activeView]);
 
     return (
-        <aside className="w-56 h-screen fixed left-0 top-0 flex flex-col border-r border-white/[0.04] backdrop-blur-xl"
-            style={{ background: 'rgba(5,5,12,0.6)', zIndex: 50, boxShadow: 'inset 0 1px 1px rgba(255,255,255,0.06)' }}>
+        <aside className="w-56 h-screen fixed left-0 top-0 flex flex-col"
+            style={{ background: '#111111', borderRight: '1px solid #1E1E1E', zIndex: 50 }}>
 
             {/* Logo */}
-            <div className="flex items-center gap-2.5 px-5 py-5 border-b border-white/[0.04]">
-                <div className="w-8 h-8 rounded-lg flex items-center justify-center text-sm font-black text-black"
-                    style={{ background: 'linear-gradient(135deg, #06B6D4, #0891B2)', boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.25), 0 4px 12px -4px rgba(0,0,0,0.5)' }}>
-                    S
-                </div>
-                <span className="text-sm font-bold tracking-tight">Synapse</span>
+            <div className="flex items-center gap-2.5 px-5 py-5">
+                <div className="w-2 h-2" style={{ background: '#E8FF47' }} />
+                <span style={{ fontFamily: 'var(--font-display)', fontSize: '20px', letterSpacing: '3px', color: '#F5F5F5' }}>SYNAPSE</span>
             </div>
 
             {/* Nav items */}
-            <nav ref={navRef} className="flex-1 px-2.5 py-3.5 relative">
-                {/* Animated active indicator bar */}
-                <div
-                    className="absolute left-0 w-0.5 h-9 rounded-r-full bg-cyan transition-all duration-300"
-                    style={{ top: indicatorTop, transitionTimingFunction: 'cubic-bezier(0.34, 1.56, 0.64, 1)' }}
-                />
-
-                {navItems.map((item) => (
-                    <button
-                        key={item.view}
-                        data-view={item.view}
-                        onClick={() => onViewChange(item.view)}
-                        className={`
-              w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-[13px] font-medium
-              transition-all duration-200 border border-transparent mb-0.5 text-left
-              ${activeView === item.view
-                                ? 'text-cyan bg-cyan/[0.08] border-cyan/[0.12]'
-                                : 'text-text-muted hover:text-text-secondary hover:bg-white/[0.03] hover:translate-x-0.5'}
-            `}
-                    >
-                        <span className={`transition-opacity ${activeView === item.view ? 'opacity-100' : 'opacity-50'}`}>
-                            {item.icon}
-                        </span>
-                        {item.label}
-                    </button>
-                ))}
+            <nav className="flex-1 py-2">
+                {navItems.map((item) => {
+                    const isActive = activeView === item.view;
+                    return (
+                        <button
+                            key={item.view}
+                            data-view={item.view}
+                            onClick={() => onViewChange(item.view)}
+                            className="w-full flex items-center gap-2.5 px-5 py-2.5 text-left transition-all duration-150 relative"
+                            style={{
+                                fontFamily: 'var(--font-sans)',
+                                fontSize: '13px',
+                                fontWeight: 500,
+                                color: isActive ? '#E8FF47' : '#555',
+                                borderLeft: isActive ? '3px solid #E8FF47' : '3px solid transparent',
+                                background: isActive ? 'rgba(232,255,71,0.05)' : 'transparent',
+                                borderTop: 'none',
+                                borderRight: 'none',
+                                borderBottom: 'none',
+                            }}
+                            onMouseEnter={e => {
+                                if (!isActive) {
+                                    e.currentTarget.style.color = '#F5F5F5';
+                                    e.currentTarget.style.borderLeftColor = '#333';
+                                }
+                            }}
+                            onMouseLeave={e => {
+                                if (!isActive) {
+                                    e.currentTarget.style.color = '#555';
+                                    e.currentTarget.style.borderLeftColor = 'transparent';
+                                }
+                            }}
+                        >
+                            <span style={{ opacity: isActive ? 1 : 0.5, transition: 'opacity 0.15s' }}>
+                                {item.icon}
+                            </span>
+                            {item.label}
+                            {/* Active dot indicator */}
+                            {isActive && (
+                                <span className="absolute" style={{ right: '16px', top: '50%', transform: 'translateY(-50%)', width: '4px', height: '4px', background: '#E8FF47', borderRadius: '50%' }} />
+                            )}
+                        </button>
+                    );
+                })}
             </nav>
 
             {/* Footer */}
-            <div className="px-5 py-3.5 border-t border-white/[0.04]">
+            <div className="px-5 py-3.5">
                 <button
                     onClick={logout}
-                    className="w-full text-left text-xs text-text-muted hover:text-white transition-colors py-1.5"
+                    className="w-full text-left py-1.5 transition-colors duration-150"
+                    style={{ fontFamily: 'var(--font-sans)', fontSize: '12px', color: '#444', background: 'none', border: 'none' }}
+                    onMouseEnter={e => e.currentTarget.style.color = '#E8FF47'}
+                    onMouseLeave={e => e.currentTarget.style.color = '#444'}
                 >
                     Sign Out
                 </button>

@@ -1,0 +1,261 @@
+You are doing a POLISH PASS on the Synapse educator dashboard. The major redesign 
+has already been done — Bebas Neue typography, yellow-green accent (#E8FF47), dark 
+grid background, sharp corners. Now we are fixing specific problems and adding 
+intentional details that separate "good" from "exceptional".
+
+Do NOT change any logic, routing, data fetching, or backend connections.
+Only change visual/styling code.
+
+---
+
+## CRITICAL BUGS TO FIX FIRST
+
+### 1. REMOVE THE FLOATING DOT CURSOR ANIMATION
+There is an animated yellow dot that follows the mouse cursor across every page.
+Find it — it is likely a component called something like <CursorDot>, <FloatingDot>, 
+<AnimatedCursor>, or a useEffect that tracks mousemove and moves a div.
+DELETE it entirely. Remove the component, remove any useEffect listening to 
+mousemove for visual purposes, remove the DOM element, remove the CSS for it.
+This is the single most urgent fix. It appears on every screen and makes the 
+product look unfinished.
+
+### 2. FIX AUTH PAGE CARD BORDER RADIUS
+The form card on /auth still has large rounded corners (~12px or more).
+Change it to: border-radius: 2px
+Every other card in the app is already sharp. The auth card must match.
+
+### 3. FIX CLASSROOM CARD INITIAL LETTER
+On the /classrooms page, each classroom card shows a large letter (the classroom 
+initial) as a standalone element above the classroom name. It currently looks like 
+a rendering bug.
+
+Fix it like this:
+- Remove the large letter as a separate visible element above the name
+- Instead, place it as a CSS ::before pseudo-element or absolutely positioned div 
+  BEHIND the card content
+- Style it as: Bebas Neue, font-size: 180px, color: #1A1A1A (nearly invisible), 
+  position: absolute, bottom: -20px, right: 16px, line-height: 1, 
+  pointer-events: none, user-select: none, z-index: 0
+- All card content sits on z-index: 1 above it
+- This turns it into a large decorative watermark background letter — 
+  intentional, typographic, invisible unless you look for it
+
+### 4. FIX OVERVIEW STAT CARDS GRID
+The four stat cards are still rendering at equal widths.
+Change the grid to:
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr 1.5fr;
+  gap: 12px;
+
+The "Total Debug Sessions" card (2fr) should be visually dominant — it's the 
+primary metric. The "At-Risk Students" card (1.5fr) should be second-largest — 
+it's the most urgent. The middle two cards are supporting context.
+
+### 5. FIX CURRICULUM INSIGHTS TIMELINE LINE
+The vertical connecting line between the 3 steps on the student onboarding page 
+(/student) is barely visible.
+Find the vertical timeline connector and set it to:
+  border-left: 2px solid #2A2A2A
+Also ensure the step number badges are exactly:
+  width: 32px, height: 32px, background: #E8FF47, color: #0D0D0D
+  font-family: Bebas Neue, font-size: 18px, border-radius: 2px
+  display: flex, align-items: center, justify-content: center
+
+---
+
+## ENHANCEMENT PASS — DETAILS THAT ELEVATE THE DESIGN
+
+These are additions that will make the UI feel crafted rather than assembled.
+Add ALL of them.
+
+### ENHANCEMENT 1: STAT CARD MICRO-DETAIL
+On the Overview page stat cards, add a very subtle top border accent:
+- Total Debug Sessions card: border-top: 2px solid #E8FF47
+- Avg Fix Time card: border-top: 2px solid #444
+- Quiz Completion Rate card: border-top: 2px solid #4ADE80
+- At-Risk Students card: border-top: 2px solid #FF6B35
+
+This creates a color-coded "type" system for each metric at a glance.
+Remove the border-left on the At-Risk card — replace it with this border-top instead.
+
+### ENHANCEMENT 2: EMPTY STATE NUMBERS
+On the /classrooms page, when a classroom has 0 students and 0 sessions, 
+the "0" values look like missing data. Style them differently from real data:
+- If value is 0: color: #333 (very dim)
+- If value is >0: color: #F5F5F5 (full brightness)
+This communicates "no data yet" vs "real data" without any additional text.
+
+### ENHANCEMENT 3: HEATMAP ROW HOVER STATE
+On the Struggle Heatmap page, when hovering a row:
+- background: rgba(232, 255, 71, 0.04)
+- The rank number changes from #2A2A2A to #E8FF47
+- transition: all 0.12s ease
+This makes the table feel interactive and scannable.
+
+### ENHANCEMENT 4: SIDEBAR ACTIVE STATE REFINEMENT
+The current active nav item has a left yellow border and subtle background.
+Add one more detail: a small yellow dot indicator.
+For the active nav item only, add a ::after pseudo-element:
+  content: '';
+  width: 4px; height: 4px;
+  background: #E8FF47;
+  border-radius: 50%;
+  position: absolute;
+  right: 16px;
+  top: 50%;
+  transform: translateY(-50%);
+This is a tiny signal that rewards attention without being loud.
+
+### ENHANCEMENT 5: BADGE REFINEMENT ACROSS ALL PAGES
+Audit every badge/tag/pill in the app (crash %, quiz %, OPEN, REINFORCEMENT GAP, 
+MISSING PREREQUISITE, ON TRACK, 1-on-1 recommended, Quiz not started, etc.)
+
+Apply this consistent system:
+- All badges: border-radius: 2px, font-family: DM Sans, font-size: 10px, 
+  font-weight: 600, letter-spacing: 1px, text-transform: uppercase, 
+  padding: 3px 8px
+- OPEN / ON TRACK / positive: bg rgba(74,222,128,0.12), color #4ADE80, 
+  border: 1px solid rgba(74,222,128,0.25)
+- WARNING / REINFORCEMENT GAP / Quiz not started: bg rgba(232,255,71,0.1), 
+  color #E8FF47, border: 1px solid rgba(232,255,71,0.2)
+- DANGER / 1-on-1 recommended / MISSING PREREQUISITE / Below 40%: 
+  bg rgba(255,107,53,0.12), color #FF6B35, border: 1px solid rgba(255,107,53,0.25)
+- NEUTRAL / Close / language tags: bg transparent, color #555, 
+  border: 1px solid #2A2A2A
+
+This unifies every badge in the app under one coherent semantic system.
+
+### ENHANCEMENT 6: HOMEWORK PROGRESS BAR REFINEMENT
+On the Homework page, each assignment has a progress bar.
+Current: solid yellow bar on dark background.
+Enhanced version:
+- Bar track: background: #1E1E1E, height: 3px (thinner — more refined)
+- Bar fill: background: #E8FF47
+- BUT: if submission rate is below 30%, fill color: #FF6B35
+- If between 30-60%: fill color: #E8B835  
+- If above 60%: fill color: #E8FF47
+The bar now communicates urgency, not just progress.
+
+### ENHANCEMENT 7: CURRICULUM INSIGHTS LEFT BORDER COLORS
+The Curriculum Insights page already has left border colors on each insight card.
+Ensure they are exactly:
+- REINFORCEMENT GAP: border-left: 3px solid #FF6B35
+- MISSING PREREQUISITE: border-left: 3px solid #FF6B35
+- ON TRACK: border-left: 3px solid #4ADE80
+- Any other status that isn't positive: border-left: 3px solid #E8B835
+
+Also ensure the insight box (the grey recommendation text box inside each card):
+  background: #111111
+  border: 1px solid #222222
+  border-radius: 2px
+  font-family: DM Sans
+  font-size: 13px
+  color: #888
+  padding: 12px 16px
+  font-style: italic
+
+The italic treatment signals "AI recommendation" vs factual data.
+
+### ENHANCEMENT 8: MASTERY TRACKING THRESHOLD LINE
+On the Mastery Tracking page, each concept bar has a benchmark threshold marker.
+Make this marker more visible and intentional:
+- The threshold tick mark: width: 2px, height: 16px, background: #444, 
+  position: absolute on the bar
+- Add a tiny label above it: "TARGET" in DM Sans, 8px, color: #444, 
+  letter-spacing: 1px
+- When the bar EXCEEDS the threshold, the tick mark color changes to #4ADE80
+- When the bar is BELOW the threshold, the tick mark color stays #444
+This makes the threshold feel like a real benchmark, not a decoration.
+
+### ENHANCEMENT 9: PAGE TITLE TREATMENT
+Currently all page titles are just large Bebas Neue text.
+Add one consistent detail across all inner pages (Overview, Heatmap, 
+Mastery, Curriculum Insights, Homework):
+
+Below the page title, the subtitle line "Full Stack Cohort 12 · Week 3":
+- Add a small separator before the cohort name
+- Style it as: DM Sans, 11px, color: #444, letter-spacing: 1px
+- Add a dot separator styled as: color: #E8FF47 between cohort and week
+  So it reads: "Full Stack Cohort 12  ·  Week 3" where the · is color: #E8FF47
+
+Small detail, consistent signal.
+
+### ENHANCEMENT 10: HEADER RIGHT STATS SEPARATOR
+Between "ACTIVE TODAY 27" and "TOTAL STUDENTS 34" in the top-right header:
+Add a vertical divider:
+  width: 1px, height: 32px, background: #222, margin: 0 24px
+
+This gives the two stats their own breathing room and makes the header 
+feel deliberately composed rather than just two items floating together.
+
+### ENHANCEMENT 11: STUDENT ONBOARDING PAGE (/student)
+This page has 3 setup steps. Enhance it:
+- The card that contains all 3 steps: max-width: 640px, centered, 
+  background: transparent (no card bg — let the grid show through)
+- Each step row: background: #1A1A1A, border: 1px solid #2A2A2A, 
+  border-radius: 2px, padding: 24px
+- When a step is "completed" (step 1 after VS Code installed, etc.): 
+  border-left: 3px solid #4ADE80
+- When a step is "current/active": border-left: 3px solid #E8FF47  
+- When a step is "upcoming": border-left: 3px solid #222
+- The code block showing the JSON config: 
+  background: #0D0D0D, border: 1px solid #222, border-radius: 2px, 
+  font-family: 'JetBrains Mono', 'Fira Code', monospace, font-size: 12px,
+  color: #E8FF47, padding: 12px 16px
+- The "Save ID" button: same style as primary buttons — bg #E8FF47, 
+  color #0D0D0D, border-radius: 2px, font-weight: 600
+
+### ENHANCEMENT 12: SCROLLBAR STYLING
+Add custom scrollbar styling to match the design system:
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: #0D0D0D; }
+  ::-webkit-scrollbar-thumb { background: #2A2A2A; border-radius: 0px; }
+  ::-webkit-scrollbar-thumb:hover { background: #E8FF47; }
+
+Thin, sharp, dark. On hover it goes yellow. Consistent with the system.
+
+---
+
+## THINGS TO ABSOLUTELY NOT DO
+
+- Do NOT add any gradients anywhere (no linear-gradient on cards, buttons, bg)
+- Do NOT round any corners above 4px
+- Do NOT add drop shadows or box-shadows (use borders for depth)
+- Do NOT add any new animation libraries
+- Do NOT add icons you don't already have
+- Do NOT change any TypeScript/JavaScript logic
+- Do NOT change any routing or data layer
+- Do NOT add new npm packages except Google Fonts (already loaded via CSS import)
+- Do NOT add tooltips, modals, or new interactive components
+- Do NOT make any layout wider than the current max-width
+- Do NOT change font sizes by more than 2px from what is already set
+
+---
+
+## EXECUTION ORDER
+
+Do these in this exact sequence:
+
+1. Find and DELETE the floating cursor dot component/animation — verify it's gone
+2. Fix auth card border-radius
+3. Fix classroom card watermark letter
+4. Fix overview stat card grid columns
+5. Fix timeline connector on student page
+6. Apply Enhancement 1 (stat card top borders)
+7. Apply Enhancement 2 (zero value dimming)
+8. Apply Enhancement 3 (heatmap row hover)
+9. Apply Enhancement 4 (sidebar dot indicator)
+10. Apply Enhancement 5 (badge system audit — this touches many files)
+11. Apply Enhancement 6 (homework bar color logic)
+12. Apply Enhancement 7 (curriculum insights borders + italic box)
+13. Apply Enhancement 8 (mastery threshold marker)
+14. Apply Enhancement 9 (subtitle dot separator)
+15. Apply Enhancement 10 (header stats divider)
+16. Apply Enhancement 11 (student page step cards)
+17. Apply Enhancement 12 (scrollbar)
+18. Final pass: search the entire codebase for any remaining instances of 
+    these colors and replace them:
+    - #06B6D4, #0891B2, #00BCD4, #22D3EE (any cyan shades)
+    - Any border-radius above 6px that isn't on a circle/avatar
+    - Any box-shadow that isn't 0 0 0 (outline-style)
+    Then confirm every page renders correctly.

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { API } from '../api';
@@ -16,7 +16,10 @@ export default function DashboardPage() {
 
     const [activeView, setActiveView] = useState(searchParams.get('view') || 'overview');
     const [data, setData] = useState(null);
-    const [hoveredStudent, setHoveredStudent] = useState(null);
+    const [lastUpdated, setLastUpdated] = useState(null);
+    const [secondsAgo, setSecondsAgo] = useState(0);
+    const pollRef = useRef(null);
+    const tickRef = useRef(null);
 
     // Homework state
     const [hwModal, setHwModal] = useState(false);
@@ -24,15 +27,24 @@ export default function DashboardPage() {
     const [hwBody, setHwBody] = useState('');
     const [hwDue, setHwDue] = useState('');
 
+    // Fetch all cohort data
+    const fetchAll = useCallback(async () => {
+        const [cohort, stats, heatmap, atRisk, mastery, curriculum, homework] = await Promise.all([
+            API.getCohortInfo(), API.getWeeklyStats(), API.getHeatmap(), API.getAtRisk(), API.getMastery(), API.getCurriculum(), API.getHomework(),
+        ]);
+        setData({ cohort, stats, heatmap, atRisk, mastery, curriculum, homework });
+        setLastUpdated(Date.now());
+        setSecondsAgo(0);
+    }, []);
+
+    // Initial fetch + 10-second polling
     useEffect(() => {
         if (!user || user.role !== 'teacher') { navigate('/auth'); return; }
-        (async () => {
-            const [cohort, stats, heatmap, atRisk, mastery, curriculum, homework] = await Promise.all([
-                API.getCohortInfo(), API.getWeeklyStats(), API.getHeatmap(), API.getAtRisk(), API.getMastery(), API.getCurriculum(), API.getHomework(),
-            ]);
-            setData({ cohort, stats, heatmap, atRisk, mastery, curriculum, homework });
-        })();
-    }, [user, navigate]);
+        fetchAll();
+        pollRef.current = setInterval(fetchAll, 10000);
+        tickRef.current = setInterval(() => setSecondsAgo(s => s + 1), 1000);
+        return () => { clearInterval(pollRef.current); clearInterval(tickRef.current); };
+    }, [user, navigate, fetchAll]);
 
     const handleViewChange = (v) => setActiveView(v);
 
@@ -51,17 +63,27 @@ export default function DashboardPage() {
     };
 
     if (!data) return (
-        <div className="h-screen flex items-center justify-center">
-            <div className="w-8 h-8 border-2 border-cyan/30 border-t-cyan rounded-full animate-spin" />
+        <div className="h-screen flex items-center justify-center" style={{ background: '#0D0D0D' }}>
+            <div className="w-8 h-8 border-2 border-[#E8FF4730] border-t-[#E8FF47] rounded-full animate-spin" />
         </div>
     );
 
     const { cohort, stats, heatmap, atRisk, mastery, curriculum, homework } = data;
 
-    const barColor = (p) => p >= 60 ? '#EF4444' : p >= 40 ? '#F59E0B' : '#06B6D4';
-    const masteryColor = (s) => s === 'good' ? '#22C55E' : s === 'warn' ? '#F59E0B' : '#EF4444';
+    const hwBarColor = (pct) => pct > 60 ? '#E8FF47' : pct > 30 ? '#E8B835' : '#FF6B35';
+    const masteryColor = (s) => s >= 80 ? '#4ADE80' : s >= 60 ? '#E8FF47' : s >= 40 ? '#E8B835' : '#FF6B35';
     const curTypeLabel = { gap: 'Reinforcement Gap', missing: 'Missing Prerequisite', ok: 'On Track' };
-    const curBorder = { gap: '#F59E0B', missing: '#EF4444', ok: '#22C55E' };
+    const curBorder = { gap: '#FF6B35', missing: '#FF6B35', ok: '#4ADE80' };
+    const curBadge = { gap: '#FF6B35', missing: '#FF6B35', ok: '#4ADE80' };
+
+    const viewTitles = {
+        overview: 'OVERVIEW',
+        heatmap: 'STRUGGLE HEATMAP',
+        students: 'AT-RISK STUDENTS',
+        mastery: 'MASTERY TRACKING',
+        curriculum: 'CURRICULUM INSIGHTS',
+        homework: 'HOMEWORK',
+    };
 
     return (
         <div className="min-h-screen flex relative">
@@ -71,35 +93,57 @@ export default function DashboardPage() {
 
             <main className="ml-56 flex-1 flex flex-col min-h-screen relative z-10">
                 {/* Topbar */}
-                <header className="flex items-center justify-between px-7 py-4 border-b border-white/[0.04] shrink-0"
-                    style={{ background: 'rgba(5,5,12,0.45)', backdropFilter: 'blur(24px) saturate(120%)', boxShadow: 'inset 0 1px 1px rgba(255,255,255,0.06)' }}>
+                <header className="flex items-center justify-between px-7 py-4 shrink-0"
+                    style={{ background: '#0D0D0D', borderBottom: '1px solid #1E1E1E' }}>
                     <div>
                         <div className="flex items-center gap-2.5 mb-1">
-                            <a href="/classrooms" className="text-xs text-text-muted hover:text-cyan transition-colors flex items-center gap-1">
+                            <a href="/classrooms" className="flex items-center gap-1 transition-colors duration-150"
+                                style={{ fontSize: '12px', color: '#555', fontFamily: 'var(--font-sans)', textDecoration: 'none' }}
+                                onMouseEnter={e => e.currentTarget.style.color = '#E8FF47'}
+                                onMouseLeave={e => e.currentTarget.style.color = '#555'}>
                                 <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="15 18 9 12 15 6" /></svg>
                                 Classrooms
                             </a>
                         </div>
-                        <h1 className="text-lg font-extrabold tracking-tight capitalize">{activeView === 'overview' ? 'Overview' : activeView.replace(/([A-Z])/g, ' $1')}</h1>
-                        <p className="text-[11px] text-text-muted">{cohort.name} · Week {cohort.week}</p>
+                        <h1 style={{ fontFamily: 'var(--font-display)', fontSize: '42px', letterSpacing: '2px', lineHeight: 1, color: '#F5F5F5' }}>
+                            {viewTitles[activeView] || activeView.toUpperCase()}
+                        </h1>
+                        {/* Enhancement 9: subtitle with yellow dot separator */}
+                        <p className="mt-1" style={{ fontFamily: 'var(--font-sans)', fontSize: '11px', color: '#444', letterSpacing: '1px' }}>
+                            {cohort.name} <span style={{ color: '#E8FF47', margin: '0 4px' }}>·</span> Week {cohort.week}
+                        </p>
                     </div>
-                    <div className="flex items-center gap-6">
-                        <div className="text-right">
-                            <div className="text-[10px] uppercase tracking-wider text-text-muted font-semibold">Active today</div>
-                            <div className="text-xl font-extrabold text-cyan tabular-nums">{cohort.activeToday}</div>
+                    <div className="flex items-center gap-0">
+                        <div className="text-right pr-6">
+                            <div style={{ fontFamily: 'var(--font-sans)', fontSize: '9px', letterSpacing: '3px', textTransform: 'uppercase', color: '#555', fontWeight: 500 }}>Active today</div>
+                            <div className="tabular-nums" style={{ fontFamily: 'var(--font-display)', fontSize: '36px', color: '#E8FF47', lineHeight: 1 }}>{cohort.activeToday}</div>
                         </div>
+                        {/* Enhancement 10: vertical divider */}
+                        <div style={{ width: '1px', height: '32px', background: '#222', margin: '0 24px' }} />
                         <div className="text-right">
-                            <div className="text-[10px] uppercase tracking-wider text-text-muted font-semibold">Total students</div>
-                            <div className="text-xl font-extrabold text-cyan tabular-nums">{cohort.totalStudents}</div>
+                            <div style={{ fontFamily: 'var(--font-sans)', fontSize: '9px', letterSpacing: '3px', textTransform: 'uppercase', color: '#555', fontWeight: 500 }}>Total students</div>
+                            <div className="tabular-nums" style={{ fontFamily: 'var(--font-display)', fontSize: '36px', color: '#F5F5F5', lineHeight: 1 }}>{cohort.totalStudents}</div>
+                        </div>
+                        {/* Live polling indicator */}
+                        <div style={{ width: '1px', height: '32px', background: '#222', margin: '0 24px' }} />
+                        <div className="text-right">
+                            <div className="flex items-center gap-1.5">
+                                <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#4ADE80', animation: 'pulse-glow 2s infinite' }} />
+                                <span style={{ fontFamily: 'var(--font-sans)', fontSize: '9px', letterSpacing: '2px', textTransform: 'uppercase', color: '#555', fontWeight: 500 }}>LIVE</span>
+                            </div>
+                            <div className="tabular-nums mt-0.5" style={{ fontFamily: 'var(--font-sans)', fontSize: '11px', color: '#444' }}>
+                                {secondsAgo < 2 ? 'Just now' : `${secondsAgo}s ago`}
+                            </div>
                         </div>
                     </div>
                 </header>
 
-                <div className="flex-1 overflow-y-auto p-7">
+                <div className="flex-1 overflow-y-auto p-7 page-content">
                     {/* ── OVERVIEW ─── */}
                     {activeView === 'overview' && (
                         <>
-                            <div className="grid grid-cols-4 gap-4 mb-5">
+                            {/* Enhancement 4: asymmetric grid */}
+                            <div className="grid gap-3 mb-5" style={{ gridTemplateColumns: '2fr 1fr 1fr 1.5fr' }}>
                                 <StatCard label="Total Debug Sessions" value={stats.totalSessions} delta={`${stats.improvementVsLastWeek} vs last week`} deltaType="positive" sparkData={[12, 18, 14, 22, 19, 27, 24]} delay={0} />
                                 <StatCard label="Avg Fix Time" value={parseFloat(stats.avgFixTime)} unit="min" delta="cohort average" sparkData={[18, 15, 17, 13, 16, 14, 13]} delay={80} />
                                 <StatCard label="Quiz Completion Rate" value={stats.quizCompletionRate} unit="%" delta="" sparkData={[30, 35, 38, 42, 40, 45, 47]} delay={160} />
@@ -107,28 +151,32 @@ export default function DashboardPage() {
                             </div>
 
                             <div className="grid grid-cols-2 gap-4">
-                                <div className="rounded-xl p-6 border border-white/[0.04] relative overflow-hidden"
-                                    style={{ background: 'rgba(17,24,39,0.6)', backdropFilter: 'blur(24px)', boxShadow: 'inset 0 1px 1px rgba(255,255,255,0.06), 0 24px 48px -12px rgba(0,0,0,0.5)' }}>
-                                    <div className="absolute top-0 left-[12%] right-[12%] h-px bg-gradient-to-r from-transparent via-white/[0.05] to-transparent" />
+                                <div className="p-6" style={{ background: '#1A1A1A', border: '1px solid #2A2A2A', borderRadius: '2px' }}>
                                     <div className="flex justify-between items-start mb-5">
-                                        <h3 className="text-sm font-bold tracking-tight">Top Struggles This Week</h3>
-                                        <button onClick={() => setActiveView('heatmap')} className="text-[11px] text-cyan font-semibold hover:text-white transition-colors">See all</button>
+                                        <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '22px', letterSpacing: '1px', color: '#F5F5F5' }}>TOP STRUGGLES THIS WEEK</h3>
+                                        <button onClick={() => setActiveView('heatmap')}
+                                            className="transition-colors duration-150"
+                                            style={{ fontFamily: 'var(--font-sans)', fontSize: '12px', color: '#E8FF47', background: 'none', border: 'none' }}
+                                            onMouseEnter={e => e.currentTarget.style.color = '#F5F5F5'}
+                                            onMouseLeave={e => e.currentTarget.style.color = '#E8FF47'}>See all</button>
                                     </div>
-                                    <div className="flex flex-col gap-2.5">
+                                    <div className="flex flex-col">
                                         {heatmap.slice(0, 3).map((row, i) => (
                                             <StruggleRow key={i} row={row} delay={i * 100} />
                                         ))}
                                     </div>
                                 </div>
 
-                                <div className="rounded-xl p-6 border border-white/[0.04] relative overflow-hidden"
-                                    style={{ background: 'rgba(17,24,39,0.6)', backdropFilter: 'blur(24px)', boxShadow: 'inset 0 1px 1px rgba(255,255,255,0.06), 0 24px 48px -12px rgba(0,0,0,0.5)' }}>
-                                    <div className="absolute top-0 left-[12%] right-[12%] h-px bg-gradient-to-r from-transparent via-white/[0.05] to-transparent" />
+                                <div className="p-6" style={{ background: '#1A1A1A', border: '1px solid #2A2A2A', borderRadius: '2px' }}>
                                     <div className="flex justify-between items-start mb-5">
-                                        <h3 className="text-sm font-bold tracking-tight">Students Needing Attention</h3>
-                                        <button onClick={() => setActiveView('students')} className="text-[11px] text-cyan font-semibold hover:text-white transition-colors">See all</button>
+                                        <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '22px', letterSpacing: '1px', color: '#F5F5F5' }}>STUDENTS NEEDING ATTENTION</h3>
+                                        <button onClick={() => setActiveView('students')}
+                                            className="transition-colors duration-150"
+                                            style={{ fontFamily: 'var(--font-sans)', fontSize: '12px', color: '#E8FF47', background: 'none', border: 'none' }}
+                                            onMouseEnter={e => e.currentTarget.style.color = '#F5F5F5'}
+                                            onMouseLeave={e => e.currentTarget.style.color = '#E8FF47'}>See all</button>
                                     </div>
-                                    <div className="flex flex-col gap-2.5">
+                                    <div className="flex flex-col">
                                         {atRisk.slice(0, 3).map((s, i) => (
                                             <StudentRow key={i} student={s} delay={i * 100} />
                                         ))}
@@ -138,42 +186,62 @@ export default function DashboardPage() {
                         </>
                     )}
 
-                    {/* ── HEATMAP ─── */}
+                    {/* ── HEATMAP ─── (Enhancement 3: hover state) */}
                     {activeView === 'heatmap' && (
-                        <div className="rounded-xl p-6 border border-white/[0.04] relative overflow-hidden"
-                            style={{ background: 'rgba(17,24,39,0.6)', backdropFilter: 'blur(24px)', boxShadow: 'inset 0 1px 1px rgba(255,255,255,0.06), 0 24px 48px -12px rgba(0,0,0,0.5)' }}>
-                            <h3 className="text-sm font-bold mb-1 tracking-tight">Struggle Heatmap — Last 7 Days</h3>
-                            <p className="text-xs text-text-muted mb-5">Ranked by debugging attempts across cohort</p>
-                            <div className="space-y-3">
-                                {heatmap.map((row, i) => (
-                                    <div key={i} className="grid items-center gap-4 py-3 border-b border-white/[0.03] last:border-b-0 transition-all duration-200 hover:bg-white/[0.015] hover:translate-x-1 rounded-lg px-2"
-                                        style={{ gridTemplateColumns: '200px 1fr 80px 80px 90px 90px', opacity: 0, animation: `slide-left 0.4s cubic-bezier(0.22,1,0.36,1) ${i * 60}ms forwards` }}>
-                                        <div className="flex items-center gap-2.5">
-                                            <span className="text-lg font-black text-cyan tabular-nums w-6">{i + 1}</span>
-                                            <span className="text-sm font-semibold">{row.errorType}</span>
-                                        </div>
-                                        <div className="h-2 rounded-full bg-white/[0.04] overflow-hidden">
-                                            <div className="h-full rounded-full relative overflow-hidden" style={{ width: `${row.pct}%`, background: barColor(row.pct), transition: 'width 1s cubic-bezier(0.22,1,0.36,1)' }}>
-                                                <div className="absolute inset-0 animate-shimmer" style={{ background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent)', width: '50%' }} />
+                        <div className="p-6" style={{ background: '#1A1A1A', border: '1px solid #2A2A2A', borderRadius: '2px' }}>
+                            {/* Column headers */}
+                            <div className="grid items-center gap-4 pb-3 mb-2" style={{ gridTemplateColumns: '200px 1fr 80px 80px 90px 90px', borderBottom: '1px solid #1E1E1E' }}>
+                                <span style={{ fontFamily: 'var(--font-sans)', fontSize: '9px', letterSpacing: '3px', textTransform: 'uppercase', color: '#444' }}>Concept</span>
+                                <span style={{ fontFamily: 'var(--font-sans)', fontSize: '9px', letterSpacing: '3px', textTransform: 'uppercase', color: '#444' }}>Severity</span>
+                                <span style={{ fontFamily: 'var(--font-sans)', fontSize: '9px', letterSpacing: '3px', textTransform: 'uppercase', color: '#444' }}>Attempts</span>
+                                <span style={{ fontFamily: 'var(--font-sans)', fontSize: '9px', letterSpacing: '3px', textTransform: 'uppercase', color: '#444' }}>Crash Rate</span>
+                                <span style={{ fontFamily: 'var(--font-sans)', fontSize: '9px', letterSpacing: '3px', textTransform: 'uppercase', color: '#444' }}>Avg Fix</span>
+                                <span style={{ fontFamily: 'var(--font-sans)', fontSize: '9px', letterSpacing: '3px', textTransform: 'uppercase', color: '#444' }}>Quiz Rate</span>
+                            </div>
+                            <div>
+                                {heatmap.map((row, i) => {
+                                    const rankColors = ['#FF6B35', '#FF8C35', '#E8B835', '#E8FF47', '#E8FF47'];
+                                    const crashColor = row.pct > 50 ? '#FF6B35' : row.pct > 30 ? '#E8B835' : '#4ADE80';
+                                    return (
+                                        <div key={i} className="grid items-center gap-4 py-5 px-2 group"
+                                            style={{
+                                                gridTemplateColumns: '200px 1fr 80px 80px 90px 90px',
+                                                borderBottom: i < heatmap.length - 1 ? '1px solid #1E1E1E' : 'none',
+                                                opacity: 0, animation: `slide-left 0.4s cubic-bezier(0.22,1,0.36,1) ${i * 60}ms forwards`,
+                                                transition: 'all 0.12s ease',
+                                            }}
+                                            onMouseEnter={e => {
+                                                e.currentTarget.style.background = 'rgba(232,255,71,0.04)';
+                                                const rank = e.currentTarget.querySelector('[data-rank]');
+                                                if (rank) rank.style.color = '#E8FF47';
+                                            }}
+                                            onMouseLeave={e => {
+                                                e.currentTarget.style.background = 'transparent';
+                                                const rank = e.currentTarget.querySelector('[data-rank]');
+                                                if (rank) rank.style.color = '#2A2A2A';
+                                            }}>
+                                            <div className="flex items-center gap-2.5">
+                                                <span data-rank className="tabular-nums w-8" style={{ fontFamily: 'var(--font-display)', fontSize: '32px', color: '#2A2A2A', transition: 'color 0.12s ease' }}>{i + 1}</span>
+                                                <span style={{ fontFamily: 'var(--font-sans)', fontSize: '15px', fontWeight: 600, color: '#F5F5F5' }}>{row.errorType}</span>
                                             </div>
+                                            <div className="overflow-hidden" style={{ height: '6px', background: '#222', borderRadius: 0 }}>
+                                                <div className="h-full" style={{ width: `${row.pct}%`, background: rankColors[Math.min(i, 4)], transition: 'width 1s cubic-bezier(0.22,1,0.36,1)', borderRadius: 0 }} />
+                                            </div>
+                                            <span className="tabular-nums" style={{ fontFamily: 'var(--font-display)', fontSize: '28px', color: '#F5F5F5' }}>{row.attempts.toLocaleString()}</span>
+                                            <span className="tabular-nums" style={{ fontFamily: 'var(--font-display)', fontSize: '28px', color: crashColor }}>{row.pct}%</span>
+                                            <span style={{ fontFamily: 'var(--font-sans)', fontSize: '13px', color: '#888' }}>{row.avgFixMin} min</span>
+                                            <span style={{ fontFamily: 'var(--font-sans)', fontSize: '13px', color: '#888' }}>{row.quizCompletion}%</span>
                                         </div>
-                                        <span className="text-sm font-bold text-cyan tabular-nums">{row.attempts.toLocaleString()}</span>
-                                        <span className="text-sm font-bold tabular-nums" style={{ color: barColor(row.pct) }}>{row.pct}%</span>
-                                        <span className="text-xs text-text-secondary">{row.avgFixMin} min</span>
-                                        <span className="text-xs" style={{ color: row.quizCompletion >= 60 ? '#22C55E' : '#8B8B9E' }}>{row.quizCompletion}%</span>
-                                    </div>
-                                ))}
+                                    );
+                                })}
                             </div>
                         </div>
                     )}
 
                     {/* ── STUDENTS ─── */}
                     {activeView === 'students' && (
-                        <div className="rounded-xl p-6 border border-white/[0.04] relative overflow-hidden"
-                            style={{ background: 'rgba(17,24,39,0.6)', backdropFilter: 'blur(24px)', boxShadow: 'inset 0 1px 1px rgba(255,255,255,0.06), 0 24px 48px -12px rgba(0,0,0,0.5)' }}>
-                            <h3 className="text-sm font-bold mb-1 tracking-tight">At-Risk Students</h3>
-                            <p className="text-xs text-text-muted mb-5">Flagged based on attempt count, quiz completion, and time-to-fix</p>
-                            <div className="space-y-3">
+                        <div className="p-6" style={{ background: '#1A1A1A', border: '1px solid #2A2A2A', borderRadius: '2px' }}>
+                            <div className="flex flex-col">
                                 {atRisk.map((s, i) => (
                                     <StudentRow key={i} student={s} delay={i * 80} />
                                 ))}
@@ -181,102 +249,161 @@ export default function DashboardPage() {
                         </div>
                     )}
 
-                    {/* ── MASTERY ─── */}
+                    {/* ── MASTERY ─── (Enhancement 8: threshold labels) */}
                     {activeView === 'mastery' && (
-                        <div className="rounded-xl p-6 border border-white/[0.04] relative overflow-hidden"
-                            style={{ background: 'rgba(17,24,39,0.6)', backdropFilter: 'blur(24px)', boxShadow: 'inset 0 1px 1px rgba(255,255,255,0.06), 0 24px 48px -12px rgba(0,0,0,0.5)' }}>
-                            <h3 className="text-sm font-bold mb-1 tracking-tight">Concept Mastery Tracking</h3>
-                            <p className="text-xs text-text-muted mb-5">Based on quiz completion and time-to-fix improvements</p>
-                            <div className="space-y-4">
-                                {mastery.map((m, i) => (
-                                    <div key={i} className="grid items-center gap-5 p-3.5 rounded-xl bg-white/[0.015] border border-white/[0.03] hover:bg-white/[0.03] hover:translate-x-1 transition-all duration-200"
-                                        style={{ gridTemplateColumns: '180px 1fr 80px', opacity: 0, animation: `slide-left 0.4s cubic-bezier(0.22,1,0.36,1) ${i * 80}ms forwards` }}>
-                                        <span className="text-sm font-semibold text-text-secondary">{m.concept}</span>
-                                        <div className="relative h-2 rounded-full bg-white/[0.04]">
-                                            <div className="absolute top-[-4px] bottom-[-4px] w-0.5 rounded-sm bg-white/15" style={{ left: `${m.target}%` }} title={`Target: ${m.target}%`} />
-                                            <div className="h-full rounded-full" style={{ width: `${m.mastery}%`, background: `linear-gradient(90deg, ${masteryColor(m.status)}88, ${masteryColor(m.status)})`, transition: 'width 1.2s cubic-bezier(0.22,1,0.36,1)' }} />
-                                        </div>
-                                        <span className="text-sm font-extrabold text-right tabular-nums" style={{ color: masteryColor(m.status) }}>
-                                            {m.mastery}%<span className="text-[10px] font-medium text-text-muted"> / {m.target}%</span>
-                                        </span>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-                    )}
-
-                    {/* ── CURRICULUM ─── */}
-                    {activeView === 'curriculum' && (
-                        <div className="rounded-xl p-6 border border-white/[0.04] relative overflow-hidden"
-                            style={{ background: 'rgba(17,24,39,0.6)', backdropFilter: 'blur(24px)', boxShadow: 'inset 0 1px 1px rgba(255,255,255,0.06), 0 24px 48px -12px rgba(0,0,0,0.5)' }}>
-                            <h3 className="text-sm font-bold mb-1 tracking-tight">Curriculum Optimization Insights</h3>
-                            <p className="text-xs text-text-muted mb-5">AI-generated recommendations based on real student struggle timing</p>
-                            <div className="space-y-3">
-                                {curriculum.map((item, i) => (
-                                    <div key={i} className="rounded-xl p-5 bg-white/[0.02] border border-white/[0.04] hover:translate-x-1 transition-all duration-200 relative overflow-hidden"
-                                        style={{ borderLeft: `3px solid ${curBorder[item.type]}`, opacity: 0, animation: `slide-up 0.5s cubic-bezier(0.22,1,0.36,1) ${i * 100}ms forwards` }}>
-                                        <div className="flex justify-between items-start mb-3">
-                                            <span className="text-sm font-bold tracking-tight">{item.concept}</span>
-                                            <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider"
-                                                style={{ background: `${curBorder[item.type]}14`, color: curBorder[item.type], border: `1px solid ${curBorder[item.type]}30` }}>
-                                                {curTypeLabel[item.type]}
+                        <div className="p-8" style={{ background: '#1A1A1A', border: '1px solid #2A2A2A', borderRadius: '2px' }}>
+                            <div className="space-y-0">
+                                {mastery.map((m, i) => {
+                                    const mColor = masteryColor(m.mastery);
+                                    const exceeded = m.mastery >= m.target;
+                                    const tickColor = exceeded ? '#4ADE80' : '#444';
+                                    return (
+                                        <div key={i} className="grid items-center gap-5 py-4"
+                                            style={{
+                                                gridTemplateColumns: '180px 1fr 80px',
+                                                borderBottom: i < mastery.length - 1 ? '1px solid #1E1E1E' : 'none',
+                                                opacity: 0, animation: `slide-left 0.4s cubic-bezier(0.22,1,0.36,1) ${i * 80}ms forwards`,
+                                            }}>
+                                            <span style={{ fontFamily: 'var(--font-sans)', fontSize: '14px', fontWeight: 500, color: '#F5F5F5' }}>{m.concept}</span>
+                                            <div className="relative" style={{ height: '8px', background: '#222', borderRadius: 0 }}>
+                                                {/* Threshold marker with TARGET label */}
+                                                <div className="absolute" style={{ left: `${m.target}%`, top: '-12px', transform: 'translateX(-50%)' }}>
+                                                    <div style={{ fontFamily: 'var(--font-sans)', fontSize: '8px', letterSpacing: '1px', color: tickColor, textTransform: 'uppercase', textAlign: 'center', marginBottom: '2px' }}>TARGET</div>
+                                                    <div style={{ width: '2px', height: '16px', background: tickColor, margin: '0 auto', transition: 'background 0.3s' }} />
+                                                </div>
+                                                <div className="h-full" style={{ width: `${m.mastery}%`, background: mColor, transition: 'width 1.2s cubic-bezier(0.22,1,0.36,1)', borderRadius: 0 }} />
+                                            </div>
+                                            <span className="text-right tabular-nums">
+                                                <span style={{ fontFamily: 'var(--font-display)', fontSize: '28px', color: mColor }}>{m.mastery}%</span>
+                                                <span style={{ fontFamily: 'var(--font-sans)', fontSize: '11px', color: '#444' }}> / {m.target}%</span>
                                             </span>
                                         </div>
-                                        <div className="grid grid-cols-2 gap-2 mb-3 text-xs text-text-muted">
-                                            <div>Taught: <span className="text-text-secondary font-semibold">{item.taught}</span></div>
-                                            <div>Peak Struggle: <span className="text-text-secondary font-semibold">{item.peakStruggle}</span></div>
-                                        </div>
-                                        <div className="text-xs text-text-secondary p-3 rounded-lg bg-white/[0.02] border border-white/[0.04] leading-relaxed">{item.recommendation}</div>
-                                    </div>
-                                ))}
+                                    );
+                                })}
                             </div>
                         </div>
                     )}
 
-                    {/* ── HOMEWORK ─── */}
+                    {/* ── CURRICULUM ─── (Enhancement 7: italic recs) */}
+                    {activeView === 'curriculum' && (
+                        <div className="p-6" style={{ background: '#1A1A1A', border: '1px solid #2A2A2A', borderRadius: '2px' }}>
+                            <div className="space-y-3">
+                                {curriculum.map((item, i) => {
+                                    const bColor = curBorder[item.type] || '#E8B835';
+                                    const badgeColor = curBadge[item.type] || '#E8B835';
+                                    return (
+                                        <div key={i} className="p-5 transition-all duration-200"
+                                            style={{
+                                                background: '#141414',
+                                                border: '1px solid #2A2A2A',
+                                                borderLeft: `3px solid ${bColor}`,
+                                                borderRadius: '2px',
+                                                opacity: 0, animation: `slide-up 0.5s cubic-bezier(0.22,1,0.36,1) ${i * 100}ms forwards`,
+                                            }}>
+                                            <div className="flex justify-between items-start mb-3">
+                                                <span style={{ fontFamily: 'var(--font-sans)', fontSize: '14px', fontWeight: 600, color: '#F5F5F5' }}>{item.concept}</span>
+                                                <span style={{
+                                                    fontSize: '10px', fontWeight: 600, fontFamily: 'var(--font-sans)',
+                                                    letterSpacing: '1px', textTransform: 'uppercase',
+                                                    padding: '3px 8px', borderRadius: '2px',
+                                                    background: `${badgeColor}14`,
+                                                    color: badgeColor,
+                                                    border: `1px solid ${badgeColor}30`,
+                                                }}>
+                                                    {curTypeLabel[item.type]}
+                                                </span>
+                                            </div>
+                                            <div className="grid grid-cols-2 gap-2 mb-3" style={{ fontFamily: 'var(--font-sans)', fontSize: '12px', color: '#555' }}>
+                                                <div>Taught: <span style={{ color: '#888', fontWeight: 500 }}>{item.taught}</span></div>
+                                                <div>Peak Struggle: <span style={{ color: '#888', fontWeight: 500 }}>{item.peakStruggle}</span></div>
+                                            </div>
+                                            {/* Enhancement 7: italic recommendation box */}
+                                            <div className="leading-relaxed" style={{
+                                                fontFamily: 'var(--font-sans)', fontSize: '13px', color: '#888',
+                                                background: '#111111', border: '1px solid #222222', borderRadius: '2px',
+                                                padding: '12px 16px', fontStyle: 'italic',
+                                            }}>{item.recommendation}</div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* ── HOMEWORK ─── (Enhancement 6: bar colors) */}
                     {activeView === 'homework' && (
-                        <div className="rounded-xl p-6 border border-white/[0.04] relative overflow-hidden"
-                            style={{ background: 'rgba(17,24,39,0.6)', backdropFilter: 'blur(24px)', boxShadow: 'inset 0 1px 1px rgba(255,255,255,0.06), 0 24px 48px -12px rgba(0,0,0,0.5)' }}>
+                        <div className="p-6" style={{ background: '#1A1A1A', border: '1px solid #2A2A2A', borderRadius: '2px' }}>
                             <div className="flex justify-between items-start mb-5">
                                 <div>
-                                    <h3 className="text-sm font-bold tracking-tight">Homework Questions</h3>
-                                    <p className="text-xs text-text-muted mt-1">Students see these in VS Code sidebar</p>
+                                    <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '18px', letterSpacing: '2px', color: '#F5F5F5' }}>HOMEWORK QUESTIONS</h3>
+                                    <p className="mt-1" style={{ fontFamily: 'var(--font-sans)', fontSize: '12px', color: '#555' }}>Students see these in VS Code sidebar</p>
                                 </div>
-                                <button onClick={() => setHwModal(true)} className="px-4 py-2 rounded-lg text-xs font-bold bg-white/[0.03] border border-white/[0.06] text-text-secondary hover:bg-cyan/[0.08] hover:border-cyan/[0.18] hover:text-cyan transition-all">+ New Question</button>
+                                <button onClick={() => setHwModal(true)}
+                                    className="px-4 py-2 text-xs font-medium transition-all duration-150"
+                                    style={{ border: '1px solid #E8FF47', color: '#E8FF47', background: 'transparent', borderRadius: '2px', fontFamily: 'var(--font-sans)' }}
+                                    onMouseEnter={e => e.currentTarget.style.background = 'rgba(232,255,71,0.1)'}
+                                    onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+                                    + New Question
+                                </button>
                             </div>
 
                             {homework.length === 0 ? (
                                 <div className="text-center py-16">
-                                    <svg className="w-10 h-10 mx-auto mb-3 text-text-muted" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /></svg>
-                                    <p className="font-bold mb-1">No homework yet</p>
-                                    <p className="text-xs text-text-muted">Click + New Question to assign your first problem.</p>
+                                    <div style={{ fontFamily: 'var(--font-display)', fontSize: '120px', color: '#1E1E1E', lineHeight: 1 }}>0</div>
+                                    <p style={{ fontFamily: 'var(--font-sans)', fontSize: '14px', fontWeight: 500, color: '#F5F5F5', marginBottom: '4px' }}>No homework yet</p>
+                                    <p style={{ fontFamily: 'var(--font-sans)', fontSize: '12px', color: '#555' }}>Click + New Question to assign your first problem.</p>
                                 </div>
                             ) : (
-                                <div className="space-y-3">
+                                <div>
                                     {homework.map((q, i) => {
                                         const pct = q.totalStudents ? Math.round((q.submissionCount / q.totalStudents) * 100) : 0;
-                                        const statusCol = q.status === 'open' ? '#22C55E' : '#3E3E52';
+                                        const isOpen = q.status === 'open';
+                                        const barColor = hwBarColor(pct);
                                         return (
-                                            <div key={q.id} className="rounded-xl p-5 border border-white/[0.04] bg-white/[0.02] hover:translate-x-1 transition-all duration-200"
-                                                style={{ opacity: q.status === 'open' ? 1 : 0.55, borderLeft: `3px solid ${statusCol}`, animation: `slide-up 0.4s cubic-bezier(0.22,1,0.36,1) ${i * 80}ms forwards` }}>
+                                            <div key={q.id} className="p-5 transition-all duration-200"
+                                                style={{
+                                                    background: '#141414',
+                                                    borderLeft: isOpen ? '3px solid #E8FF47' : '3px solid #2A2A2A',
+                                                    borderBottom: '1px solid #1E1E1E',
+                                                    opacity: isOpen ? 1 : 0.55,
+                                                    animation: `slide-up 0.4s cubic-bezier(0.22,1,0.36,1) ${i * 80}ms forwards`,
+                                                }}>
                                                 <div className="flex justify-between items-center mb-2">
-                                                    <span className="text-sm font-bold">{q.title}</span>
-                                                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ background: `${statusCol}18`, color: statusCol, border: `1px solid ${statusCol}35` }}>
-                                                        {q.status === 'open' ? 'Open' : 'Closed'}
+                                                    <span style={{ fontFamily: 'var(--font-sans)', fontSize: '16px', fontWeight: 600, color: '#F5F5F5' }}>{q.title}</span>
+                                                    <span style={{
+                                                        fontSize: '10px', fontWeight: 600, fontFamily: 'var(--font-sans)',
+                                                        letterSpacing: '1px', textTransform: 'uppercase',
+                                                        padding: '3px 8px', borderRadius: '2px',
+                                                        background: isOpen ? 'rgba(74,222,128,0.12)' : 'transparent',
+                                                        color: isOpen ? '#4ADE80' : '#444',
+                                                        border: isOpen ? '1px solid rgba(74,222,128,0.25)' : '1px solid #2A2A2A',
+                                                    }}>
+                                                        {isOpen ? 'Open' : 'Closed'}
                                                     </span>
                                                 </div>
-                                                <div className="flex gap-5 text-xs text-text-muted mb-2">
+                                                <div className="flex gap-5 mb-2" style={{ fontFamily: 'var(--font-sans)', fontSize: '12px', color: '#555' }}>
                                                     <span>Due: {q.dueDate || 'No deadline'}</span>
-                                                    <span>Submissions: <span className="text-cyan font-bold">{q.submissionCount}/{q.totalStudents}</span></span>
+                                                    <span>Submissions: <span style={{ color: '#E8FF47', fontWeight: 600 }}>{q.submissionCount}/{q.totalStudents}</span></span>
                                                     <span>Avg attempts: {q.avgAttempts || '—'}</span>
                                                 </div>
-                                                <div className="h-1 rounded-full bg-white/[0.04] overflow-hidden mb-2">
-                                                    <div className="h-full rounded-full bg-cyan" style={{ width: `${pct}%`, transition: 'width 0.8s cubic-bezier(0.22,1,0.36,1)' }} />
+                                                {/* Enhancement 6: color-coded progress bar */}
+                                                <div className="overflow-hidden mb-2" style={{ height: '3px', background: '#1E1E1E', borderRadius: 0 }}>
+                                                    <div className="h-full" style={{ width: `${pct}%`, background: barColor, transition: 'width 0.8s cubic-bezier(0.22,1,0.36,1)', borderRadius: 0 }} />
                                                 </div>
-                                                <div className="flex justify-between items-center text-xs">
-                                                    <span className="text-text-muted">{pct}% submitted · <code className="text-cyan">{q.filename}</code></span>
-                                                    {q.status === 'open' && (
-                                                        <button onClick={() => closeHw(q.id)} className="text-text-muted hover:text-white transition-colors bg-white/[0.03] border border-white/[0.06] px-2.5 py-1 rounded-md text-[11px] font-semibold">Close</button>
+                                                <div className="flex justify-between items-center" style={{ fontFamily: 'var(--font-sans)', fontSize: '12px' }}>
+                                                    <span style={{ color: '#888' }}>{pct}% submitted · <code style={{ color: '#E8FF47', fontFamily: 'monospace' }}>{q.filename}</code></span>
+                                                    {isOpen && (
+                                                        <button onClick={() => closeHw(q.id)}
+                                                            className="font-medium px-2.5 py-1 transition-all duration-150"
+                                                            style={{
+                                                                fontSize: '10px', background: 'transparent', fontFamily: 'var(--font-sans)',
+                                                                border: '1px solid #2A2A2A', borderRadius: '2px', color: '#555',
+                                                                letterSpacing: '1px', textTransform: 'uppercase', fontWeight: 600,
+                                                            }}
+                                                            onMouseEnter={e => { e.currentTarget.style.borderColor = '#FF6B35'; e.currentTarget.style.color = '#FF6B35'; }}
+                                                            onMouseLeave={e => { e.currentTarget.style.borderColor = '#2A2A2A'; e.currentTarget.style.color = '#555'; }}>
+                                                            Close
+                                                        </button>
                                                     )}
                                                 </div>
                                             </div>
@@ -293,30 +420,43 @@ export default function DashboardPage() {
             {hwModal && (
                 <div className="fixed inset-0 flex items-center justify-center z-50" style={{ background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(8px)' }} onClick={() => setHwModal(false)}>
                     <div onClick={e => e.stopPropagation()}
-                        className="rounded-2xl p-9 w-full max-w-md relative border border-white/[0.06] animate-slide-up"
-                        style={{ background: 'rgba(8,8,16,0.85)', backdropFilter: 'blur(48px) saturate(140%)', boxShadow: 'inset 0 1px 1px rgba(255,255,255,0.08), 0 40px 80px -16px rgba(0,0,0,0.75)' }}>
-                        <button onClick={() => setHwModal(false)} className="absolute top-5 right-5 w-7 h-7 rounded-md bg-white/[0.03] border border-white/[0.06] flex items-center justify-center text-text-muted hover:text-danger transition-all">
+                        className="p-9 w-full max-w-md relative animate-slide-up"
+                        style={{ background: '#1A1A1A', border: '1px solid #2A2A2A', borderRadius: '2px' }}>
+                        <button onClick={() => setHwModal(false)} className="absolute top-5 right-5 w-7 h-7 flex items-center justify-center transition-all"
+                            style={{ background: 'transparent', border: '1px solid #2A2A2A', borderRadius: '2px', color: '#444' }}
+                            onMouseEnter={e => { e.currentTarget.style.borderColor = '#EF4444'; e.currentTarget.style.color = '#EF4444'; }}
+                            onMouseLeave={e => { e.currentTarget.style.borderColor = '#2A2A2A'; e.currentTarget.style.color = '#444'; }}>
                             <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
                         </button>
-                        <h2 className="text-xl font-extrabold mb-1.5 tracking-tight">Create Homework</h2>
-                        <p className="text-xs text-text-muted mb-7">Students will see this in VS Code sidebar.</p>
+                        <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '28px', letterSpacing: '2px', color: '#F5F5F5', marginBottom: '4px' }}>CREATE HOMEWORK</h2>
+                        <p className="mb-7" style={{ fontFamily: 'var(--font-sans)', fontSize: '12px', color: '#555' }}>Students will see this in VS Code sidebar.</p>
                         <div className="mb-4">
-                            <label className="block text-[11px] font-bold uppercase tracking-wider text-text-muted mb-1.5">Title</label>
+                            <label className="block text-[10px] font-medium uppercase mb-1.5" style={{ letterSpacing: '3px', color: '#666', fontFamily: 'var(--font-sans)' }}>Title</label>
                             <input type="text" value={hwTitle} onChange={e => setHwTitle(e.target.value)} placeholder="e.g. Fibonacci with Memoization"
-                                className="w-full bg-white/[0.03] border border-white/[0.06] rounded-lg px-3.5 py-2.5 text-sm text-white outline-none focus:border-cyan/40 focus:ring-2 focus:ring-cyan/10 transition-all placeholder:text-text-muted" />
+                                className="w-full px-3.5 py-2.5 text-sm outline-none transition-all"
+                                style={{ background: '#0D0D0D', border: '1px solid #2A2A2A', borderRadius: '2px', color: '#F5F5F5', fontFamily: 'var(--font-sans)' }}
+                                onFocus={e => e.target.style.borderColor = '#E8FF47'}
+                                onBlur={e => e.target.style.borderColor = '#2A2A2A'} />
                         </div>
                         <div className="mb-4">
-                            <label className="block text-[11px] font-bold uppercase tracking-wider text-text-muted mb-1.5">Problem Statement</label>
+                            <label className="block text-[10px] font-medium uppercase mb-1.5" style={{ letterSpacing: '3px', color: '#666', fontFamily: 'var(--font-sans)' }}>Problem Statement</label>
                             <textarea value={hwBody} onChange={e => setHwBody(e.target.value)} rows={5} placeholder="Each line becomes a # comment..."
-                                className="w-full bg-white/[0.03] border border-white/[0.06] rounded-lg px-3.5 py-2.5 text-sm text-white outline-none focus:border-cyan/40 focus:ring-2 focus:ring-cyan/10 transition-all placeholder:text-text-muted resize-y" />
+                                className="w-full px-3.5 py-2.5 text-sm outline-none transition-all resize-y"
+                                style={{ background: '#0D0D0D', border: '1px solid #2A2A2A', borderRadius: '2px', color: '#F5F5F5', fontFamily: 'var(--font-sans)' }}
+                                onFocus={e => e.target.style.borderColor = '#E8FF47'}
+                                onBlur={e => e.target.style.borderColor = '#2A2A2A'} />
                         </div>
                         <div className="mb-6">
-                            <label className="block text-[11px] font-bold uppercase tracking-wider text-text-muted mb-1.5">Due Date <span className="normal-case font-normal">(optional)</span></label>
+                            <label className="block text-[10px] font-medium uppercase mb-1.5" style={{ letterSpacing: '3px', color: '#666', fontFamily: 'var(--font-sans)' }}>Due Date <span className="normal-case font-normal">(optional)</span></label>
                             <input type="date" value={hwDue} onChange={e => setHwDue(e.target.value)}
-                                className="w-full bg-white/[0.03] border border-white/[0.06] rounded-lg px-3.5 py-2.5 text-sm text-white outline-none focus:border-cyan/40 transition-all" />
+                                className="w-full px-3.5 py-2.5 text-sm outline-none transition-all"
+                                style={{ background: '#0D0D0D', border: '1px solid #2A2A2A', borderRadius: '2px', color: '#F5F5F5', fontFamily: 'var(--font-sans)' }}
+                                onFocus={e => e.target.style.borderColor = '#E8FF47'}
+                                onBlur={e => e.target.style.borderColor = '#2A2A2A'} />
                         </div>
-                        <button onClick={createHw} className="w-full py-3 rounded-xl text-sm font-extrabold text-black hover:scale-[1.03] active:scale-[0.97] transition-all"
-                            style={{ background: 'linear-gradient(180deg, #22D3EE, #06B6D4)', boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.25)' }}>
+                        <button onClick={createHw}
+                            className="w-full py-3 text-sm font-semibold transition-all"
+                            style={{ background: '#E8FF47', color: '#0D0D0D', borderRadius: '2px', border: 'none', fontFamily: 'var(--font-sans)' }}>
                             Publish to Students
                         </button>
                     </div>

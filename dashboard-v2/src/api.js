@@ -1,7 +1,7 @@
 // ─── Base URL from environment (set VITE_API_BASE_URL in .env) ───────────────
-// Local dev:  VITE_API_BASE_URL=http://localhost:3000
+// Local dev:  VITE_API_BASE_URL=http://localhost:3001
 // AWS prod:   VITE_API_BASE_URL=https://abc123.execute-api.ap-south-1.amazonaws.com/prod
-const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
+const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001';
 
 // ─── Mock data fallbacks (used when the API is unreachable) ──────────────────
 const MOCK = {
@@ -47,6 +47,7 @@ const MOCK = {
         { id: 'hw-001', title: 'Fibonacci with Memoization', body: 'Write a function fibonacci(n)...', filename: 'hw_fibonacci_memoization.py', status: 'open', dueDate: '2026-03-10', submissionCount: 18, totalStudents: 34, avgAttempts: 4.2 },
         { id: 'hw-002', title: 'Safe Dictionary Lookup', body: 'Write a function get_user_email(users, user_id)...', filename: 'hw_safe_dict_lookup.py', status: 'open', dueDate: '2026-03-08', submissionCount: 27, totalStudents: 34, avgAttempts: 2.1 },
     ],
+    classrooms: [],
 };
 
 // ─── Helper: fetch with fallback ─────────────────────────────────────────────
@@ -63,6 +64,7 @@ async function fetchWithFallback(endpoint, fallback) {
 
 // ─── API object ───────────────────────────────────────────────────────────────
 export const API = {
+    // ── Cohort data ──────────────────────────────────────────────────────────
     async getCohortInfo() {
         return fetchWithFallback('/cohort/info', MOCK.cohortInfo);
     },
@@ -91,6 +93,7 @@ export const API = {
         return fetchWithFallback('/cohort/homework', MOCK.homework);
     },
 
+    // ── Homework mutations ───────────────────────────────────────────────────
     async createHomework(payload) {
         try {
             const res = await fetch(`${BASE_URL}/cohort/homework`, {
@@ -102,7 +105,6 @@ export const API = {
             return await res.json();
         } catch (e) {
             console.warn(`[Synapse API] POST /cohort/homework failed (${e.message}), using local fallback.`);
-            // Local fallback: mutate the mock array so the UI still updates
             const slug = payload.title.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '');
             const newQ = {
                 id: `hw-${Date.now()}`,
@@ -131,6 +133,53 @@ export const API = {
             console.warn(`[Synapse API] POST /cohort/homework/${hwId}/close failed (${e.message}), using local fallback.`);
             const q = MOCK.homework.find(h => h.id === hwId);
             if (q) q.status = 'closed';
+        }
+    },
+
+    // ── Classroom CRUD ───────────────────────────────────────────────────────
+    async getClassrooms() {
+        return fetchWithFallback('/classrooms', MOCK.classrooms);
+    },
+
+    async createClassroom(payload) {
+        try {
+            const res = await fetch(`${BASE_URL}/classrooms`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload),
+            });
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            return await res.json();
+        } catch (e) {
+            console.warn(`[Synapse API] POST /classrooms failed (${e.message}), using local fallback.`);
+            const prefix = (payload.name || 'CLASS').replace(/[^a-zA-Z0-9]/g, '').substring(0, 6).toUpperCase();
+            const rand = Math.random().toString(36).substring(2, 6).toUpperCase();
+            const classroom = {
+                id: `${prefix}-${new Date().getFullYear()}-${rand}`,
+                name: payload.name,
+                lang: payload.lang || 'python',
+                batch: payload.batch || '',
+                students: 0,
+                sessions: 0,
+                createdAt: Date.now(),
+            };
+            MOCK.classrooms.push(classroom);
+            return classroom;
+        }
+    },
+
+    async joinClassroom(classroomId, studentId, studentName) {
+        try {
+            const res = await fetch(`${BASE_URL}/classrooms/${classroomId}/join`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ studentId, studentName }),
+            });
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            return await res.json();
+        } catch (e) {
+            console.warn(`[Synapse API] POST /classrooms/${classroomId}/join failed (${e.message}).`);
+            return { ok: false };
         }
     },
 };

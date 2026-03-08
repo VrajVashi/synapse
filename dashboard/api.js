@@ -67,7 +67,31 @@ const mockData = {
         avgFixTime: 13,
         quizCompletionRate: 47,
         improvementVsLastWeek: '+12%',
-    }
+    },
+    homework: [
+        {
+            id: 'hw-001',
+            title: 'Fibonacci with Memoization',
+            body: 'Write a function fibonacci(n) that returns the nth Fibonacci number.\nUse memoization (a dictionary cache) to avoid redundant calculations.\nYour function must handle n=0 (returns 0) and n=1 (returns 1).\nExample: fibonacci(10) should return 55.',
+            filename: 'hw_fibonacci_memoization.py',
+            status: 'open',
+            dueDate: '2026-03-10',
+            submissionCount: 18,
+            totalStudents: 34,
+            avgAttempts: 4.2,
+        },
+        {
+            id: 'hw-002',
+            title: 'Safe Dictionary Lookup',
+            body: 'Write a function get_user_email(users, user_id) that safely looks up a user email from a dictionary.\nReturn the email string if found, or "not found" if the user_id does not exist.\nDo NOT use try/except — use dict.get() instead.\nExample: get_user_email({"u1": {"email": "a@b.com"}}, "u1") returns "a@b.com"',
+            filename: 'hw_safe_dict_lookup.py',
+            status: 'open',
+            dueDate: '2026-03-08',
+            submissionCount: 27,
+            totalStudents: 34,
+            avgAttempts: 2.1,
+        },
+    ],
 };
 
 export const API = {
@@ -77,4 +101,31 @@ export const API = {
     async getMastery() { return mockData.mastery; },
     async getCurriculum() { return mockData.curriculum; },
     async getWeeklyStats() { return mockData.weeklyStats; },
+    async getHomework() { return mockData.homework; },
+    async createHomework(payload) {
+        // Generate slug filename from title
+        const slug = payload.title.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '');
+        const newQ = {
+            id: `hw-${Date.now()}`,
+            title: payload.title,
+            body: payload.body,
+            filename: `hw_${slug}.py`,
+            status: 'open',
+            dueDate: payload.dueDate || null,
+            submissionCount: 0,
+            totalStudents: mockData.cohortInfo.totalStudents,
+            avgAttempts: 0,
+        };
+        mockData.homework.unshift(newQ);
+        return newQ;
+        // Real: return await fetch(`${API_BASE}/classroom/${classroomId}/homework`, {
+        //   method: 'POST', headers: { 'Content-Type': 'application/json' },
+        //   body: JSON.stringify(payload) }).then(r => r.json());
+    },
+    async closeHomework(hwId) {
+        const q = mockData.homework.find(h => h.id === hwId);
+        if (q) { q.status = 'closed'; }
+        // Real: await fetch(`${API_BASE}/homework/${hwId}/status`, {
+        //   method: 'PATCH', body: JSON.stringify({ status: 'closed' }) });
+    },
 };

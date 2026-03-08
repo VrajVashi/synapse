@@ -28,6 +28,8 @@ export class SessionRecorder {
     private lastSavedContent = new Map<string, string>(); // key: filePath
     private flushTimer: NodeJS.Timeout | undefined;
     private readonly flushIntervalMs = 30000; // flush to API every 30s
+    private activeHomeworkId: string | null = null;
+    private activeHomeworkFile: string | null = null;
 
     constructor(
         private context: vscode.ExtensionContext,
@@ -60,10 +62,20 @@ export class SessionRecorder {
                     resolved: false,
                     totalDurationSeconds: 0
                 };
+                // Tag with homework ID if this file is an active HW assignment
+                if (this.activeHomeworkFile && filePath.endsWith(this.activeHomeworkFile)) {
+                    (session as any).hwQuestionId = this.activeHomeworkId;
+                }
                 this.activeSessions.set(key, session);
                 this.saveLocalSessions();
             }
         });
+    }
+
+    /** Called when a student opens a homework file via the sidebar. */
+    setActiveHomework(hwId: string, filename: string) {
+        this.activeHomeworkId = hwId;
+        this.activeHomeworkFile = filename;
     }
 
     onFileSaved(doc: vscode.TextDocument, studentId: string) {

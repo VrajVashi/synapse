@@ -1,4 +1,6 @@
 import * as vscode from 'vscode';
+import * as path from 'path';
+import * as fs from 'fs';
 import { SynapseAnalyzer } from './pythonAnalyzer';
 import { SessionRecorder } from './sessionRecorder';
 import { ReplayPanel } from './replayPanel';
@@ -28,7 +30,7 @@ export function activate(context: vscode.ExtensionContext) {
     analyzer = new SynapseAnalyzer(diagnosticCollection, sessionRecorder);
 
     // Sidebar panel (Grammarly-style)
-    sidebarProvider = new SynapseViewProvider(context.extensionUri);
+    sidebarProvider = new SynapseViewProvider(context.extensionUri, api);
     context.subscriptions.push(
         vscode.window.registerWebviewViewProvider(
             SynapseViewProvider.viewType,
@@ -78,6 +80,62 @@ export function activate(context: vscode.ExtensionContext) {
                 await config.update('studentId', studentId, vscode.ConfigurationTarget.Global);
                 vscode.window.showInformationMessage(`✅ Synapse: Registered as ${studentId}!`);
             }
+        }),
+
+        // ── Homework: open a HW question as a Python file ────────────────────
+        vscode.commands.registerCommand('synapse.openHomework', async (question: { id: string; title: string; body: string; filename: string }) => {
+            // 1. Need a workspace folder to write the file into
+            const workspaceFolders = vscode.workspace.workspaceFolders;
+            if (!workspaceFolders || workspaceFolders.length === 0) {
+                vscode.window.showErrorMessage(
+                    'Synapse: Please open a folder in VS Code first, then click the homework question again.'
+                );
+                return;
+            }
+
+            const workspaceRoot = workspaceFolders[0].uri.fsPath;
+            const filePath = path.join(workspaceRoot, question.filename);
+            const fileUri = vscode.Uri.file(filePath);
+
+            // 2. Build the Python file content — question as # comments at top
+            const commentedBody = question.body
+                .split('\n')
+                .map((line: string) => `# ${line}`)
+                .join('\n');
+
+            const fileContent = [
+                `# ${'═'.repeat(44)}`,
+                `# SYNAPSE HOMEWORK: ${question.title}`,
+                `# ${'═'.repeat(44)}`,
+                `#`,
+                commentedBody,
+                `#`,
+                `# ${'─'.repeat(44)}`,
+                `# Write your solution below this line`,
+                `# ${'─'.repeat(44)}`,
+                ``,
+                ``,
+            ].join('\n');
+
+            // 3. Write the file (creates it fresh; silently overwrites if already exists)
+            try {
+                await vscode.workspace.fs.writeFile(fileUri, Buffer.from(fileContent, 'utf8'));
+            } catch (err) {
+                vscode.window.showErrorMessage(`Synapse: Could not create file — ${err}`);
+                return;
+            }
+
+            // 4. Open the file in the editor
+            const doc = await vscode.workspace.openTextDocument(fileUri);
+            await vscode.window.showTextDocument(doc);
+
+            // 5. Tag all future debug sessions on this file with the homeworkId
+            //    so instructor analytics can group by assignment.
+            sessionRecorder.setActiveHomework(question.id, question.filename);
+
+            vscode.window.showInformationMessage(
+                `✏️ Synapse: Opened "${question.title}" — good luck! Your debugging session is being tracked.`
+            );
         })
     );
 
@@ -216,6 +274,14 @@ async function showSynapseMenu(context: vscode.ExtensionContext) {
         errorType: foundTypes[0] || 'none_handling'
     });
 
+    // ── Homework ──
+    items.push({ label: '', kind: vscode.QuickPickItemKind.Separator, description: 'Homework' } as any);
+    items.push({
+        label: '$(notebook)  View Homework Questions',
+        description: 'open a homework question as a Python file',
+        action: 'homework'
+    });
+
     // ── Settings ──
     items.push({ label: '', kind: vscode.QuickPickItemKind.Separator, description: 'Settings' } as any);
 
@@ -255,6 +321,9 @@ async function showSynapseMenu(context: vscode.ExtensionContext) {
             break;
         case 'problems':
             vscode.commands.executeCommand('workbench.actions.view.problems');
+            break;
+        case 'homework':
+            vscode.commands.executeCommand('synapse.viewHomework');
             break;
     }
 }

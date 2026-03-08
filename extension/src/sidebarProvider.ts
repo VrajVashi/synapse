@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import { SynapseApi, HWQuestion } from './api';
 
 /**
  * SynapseViewProvider — Grammarly-style sidebar panel.
@@ -6,80 +7,104 @@ import * as vscode from 'vscode';
  * Updates live as diagnostics change.
  */
 export class SynapseViewProvider implements vscode.WebviewViewProvider {
-    public static readonly viewType = 'synapse.sidebarView';
-    private _view?: vscode.WebviewView;
+  public static readonly viewType = 'synapse.sidebarView';
+  private _view?: vscode.WebviewView;
 
-    private _issueCount = 0;
-    private _issues: Array<{ type: string; message: string; line: number }> = [];
-    private _studentId = 'anonymous';
+  private _issueCount = 0;
+  private _issues: Array<{ type: string; message: string; line: number }> = [];
+  private _studentId = 'anonymous';
+  private _hwQuestions: HWQuestion[] = [];
+  private _hwLoaded = false;
 
-    constructor(private readonly _extensionUri: vscode.Uri) { }
+  constructor(
+    private readonly _extensionUri: vscode.Uri,
+    private readonly _api: SynapseApi
+  ) { }
 
-    public resolveWebviewView(
-        webviewView: vscode.WebviewView,
-        _context: vscode.WebviewViewResolveContext,
-        _token: vscode.CancellationToken
-    ) {
-        this._view = webviewView;
-        webviewView.webview.options = { enableScripts: true };
+  public resolveWebviewView(
+    webviewView: vscode.WebviewView,
+    _context: vscode.WebviewViewResolveContext,
+    _token: vscode.CancellationToken
+  ) {
+    this._view = webviewView;
+    webviewView.webview.options = { enableScripts: true };
 
-        this._render();
+    this._render();
+    this._loadHomework(); // fetch HW questions in background
 
-        // Handle button clicks from the webview
-        webviewView.webview.onDidReceiveMessage(msg => {
-            switch (msg.command) {
-                case 'takeQuiz':
-                    vscode.commands.executeCommand('synapse.showQuiz', msg.errorType);
-                    break;
-                case 'showReplay':
-                    vscode.commands.executeCommand('synapse.showReplay');
-                    break;
-                case 'showDNA':
-                    vscode.commands.executeCommand('synapse.showDNA');
-                    break;
-                case 'showProblems':
-                    vscode.commands.executeCommand('workbench.actions.view.problems');
-                    break;
-                case 'register':
-                    vscode.commands.executeCommand('synapse.registerStudent');
-                    break;
-            }
-        });
-    }
+    // Handle button clicks from the webview
+    webviewView.webview.onDidReceiveMessage(msg => {
+      switch (msg.command) {
+        case 'takeQuiz':
+          vscode.commands.executeCommand('synapse.showQuiz', msg.errorType);
+          break;
+        case 'showReplay':
+          vscode.commands.executeCommand('synapse.showReplay');
+          break;
+        case 'showDNA':
+          vscode.commands.executeCommand('synapse.showDNA');
+          break;
+        case 'showProblems':
+          vscode.commands.executeCommand('workbench.actions.view.problems');
+          break;
+        case 'register':
+          vscode.commands.executeCommand('synapse.registerStudent');
+          break;
+        case 'openHomework':
+          vscode.commands.executeCommand('synapse.openHomework', msg.question);
+          break;
+      }
+    });
+  }
 
-    /** Called by extension.ts whenever diagnostics change */
-    public updateIssues(
-        diagnostics: readonly vscode.Diagnostic[],
-        studentId: string
-    ) {
-        this._studentId = studentId;
-        this._issueCount = diagnostics.length;
-        this._issues = diagnostics.map(d => ({
-            type: d.code?.toString() || 'unknown',
-            message: d.message,
-            line: d.range.start.line + 1 // 1-indexed
-        }));
-        this._render();
-    }
+  /** Called by extension.ts whenever diagnostics change */
+  public updateIssues(
+    diagnostics: readonly vscode.Diagnostic[],
+    studentId: string
+  ) {
+    this._studentId = studentId;
+    this._issueCount = diagnostics.length;
+    this._issues = diagnostics.map(d => ({
+      type: d.code?.toString() || 'unknown',
+      message: d.message,
+      line: d.range.start.line + 1 // 1-indexed
+    }));
+    this._render();
+  }
 
-    public clearIssues() {
-        this._issueCount = 0;
-        this._issues = [];
-        this._render();
-    }
+  public clearIssues() {
+    this._issueCount = 0;
+    this._issues = [];
+    this._render();
+  }
 
-    private _render() {
-        if (!this._view) { return; }
-        this._view.webview.html = this._getHtml();
-    }
+  /** Called by extension.ts when a HW file is opened — tags future sessions */
+  public setActiveHomework(hwId: string, filename: string) {
+    // Just re-render; the actual tagging happens in SessionRecorder.
+    // This could be used to highlight the active HW question in sidebar.
+    this._render();
+  }
 
-    private _getHtml(): string {
-        const count = this._issueCount;
+  private async _loadHomework() {
+    const config = vscode.workspace.getConfiguration('synapse');
+    const classroomId = config.get<string>('classroomId') || '';
+    this._hwQuestions = await this._api.getHomework(classroomId);
+    this._hwLoaded = true;
+    this._render();
+  }
 
-        // Deduplicate error types and pick unique ones for quiz buttons
-        const uniqueTypes = [...new Set(this._issues.map(i => i.type))];
+  private _render() {
+    if (!this._view) { return; }
+    this._view.webview.html = this._getHtml();
+  }
 
-        const issueRows = this._issues.map(issue => `
+  private _getHtml(): string {
+    const count = this._issueCount;
+
+    // Deduplicate error types and pick unique ones for quiz buttons
+    const uniqueTypes = [...new Set(this._issues.map(i => i.type))];
+
+    const issueRows = this._issues.map(issue => `
             <div class="issue-row" onclick="post('takeQuiz', '${issue.type}')">
                 <div class="issue-left">
                     <div class="issue-dot ${issue.type}"></div>
@@ -92,13 +117,13 @@ export class SynapseViewProvider implements vscode.WebviewViewProvider {
             </div>
         `).join('');
 
-        const quizButtons = uniqueTypes.map(t => `
+    const quizButtons = uniqueTypes.map(t => `
             <button class="btn btn-orange" onclick="post('takeQuiz', '${t}')">
                 Quiz: ${t.replace(/_/g, ' ')}
             </button>
         `).join('');
 
-        return `<!DOCTYPE html>
+    return `<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -222,13 +247,36 @@ export class SynapseViewProvider implements vscode.WebviewViewProvider {
     <button class="btn btn-ghost" onclick="post('register')">👤 ${this._studentId}</button>
   </div>
 
+  <!-- Homework section -->
+  ${this._hwLoaded && this._hwQuestions.length > 0 ? `
+  <div class="divider"></div>
+  <div class="section-label">📋 Homework</div>
+  <div class="actions">
+    ${this._hwQuestions
+          .filter(q => q.status === 'open')
+          .map(q => `
+      <button class="btn btn-ghost" style="text-align:left;white-space:normal;line-height:1.35"
+        onclick="post('openHomework', ${JSON.stringify(JSON.stringify(q))})"
+        title="${q.dueDate ? 'Due: ' + q.dueDate : 'No deadline'}">
+        ✏️ ${q.title}
+      </button>`).join('')}
+  </div>
+  ` : this._hwLoaded ? '' : `
+  <div class="divider"></div>
+  <div style="padding:8px 14px;font-size:10px;color:var(--vscode-descriptionForeground)">Loading homework…</div>
+  `}
+
 <script>
   const vscode = acquireVsCodeApi();
-  function post(command, errorType) {
-    vscode.postMessage({ command, errorType });
+  function post(command, data) {
+    if (command === 'openHomework') {
+      vscode.postMessage({ command, question: JSON.parse(data) });
+    } else {
+      vscode.postMessage({ command, errorType: data });
+    }
   }
 </script>
 </body>
 </html>`;
-    }
+  }
 }

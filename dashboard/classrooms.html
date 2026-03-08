@@ -17,37 +17,104 @@
             padding: 0;
         }
 
-        :root {
-            --orange: #f97316;
-            --bg: #080808;
-            --surface: #111;
-            --border: #1e1e1e;
-        }
-
         body {
-            background: var(--bg);
-            color: #e5e5e5;
+            background: #05050A;
+            color: #fff;
             font-family: 'Inter', system-ui, sans-serif;
             min-height: 100vh;
         }
 
-        body::before {
-            content: '';
+        /* Orbs */
+        .orb-field {
             position: fixed;
             inset: 0;
-            background-image: linear-gradient(rgba(249, 115, 22, 0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(249, 115, 22, 0.03) 1px, transparent 1px);
-            background-size: 40px 40px;
             pointer-events: none;
+            z-index: 0;
+            overflow: hidden;
         }
 
-        /* Topbar */
+        .orb {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(160px);
+            opacity: 0.15;
+        }
+
+        .orb-cyan {
+            width: 60vw;
+            height: 60vw;
+            top: -20%;
+            left: 5%;
+            background: #00E5FF;
+            animation: d1 30s ease-in-out infinite alternate;
+        }
+
+        .orb-violet {
+            width: 55vw;
+            height: 65vw;
+            bottom: -20%;
+            right: -15%;
+            background: #7000FF;
+            animation: d2 36s ease-in-out infinite alternate;
+        }
+
+        @keyframes d1 {
+            0% {
+                transform: translate(0, 0) scale(1)
+            }
+
+            100% {
+                transform: translate(30px, 25px) scale(1.04)
+            }
+        }
+
+        @keyframes d2 {
+            0% {
+                transform: translate(0, 0) scale(1.02)
+            }
+
+            100% {
+                transform: translate(-25px, -20px) scale(0.98)
+            }
+        }
+
+        .grain {
+            position: fixed;
+            inset: 0;
+            z-index: 1;
+            pointer-events: none;
+            opacity: 0.02;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+            background-size: 200px 200px;
+        }
+
+        .grid-mesh {
+            position: fixed;
+            inset: 0;
+            z-index: 1;
+            pointer-events: none;
+            background-image:
+                linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+            background-size: 52px 52px;
+        }
+
+        header,
+        main {
+            position: relative;
+            z-index: 2;
+        }
+
         .topbar {
             display: flex;
             align-items: center;
             justify-content: space-between;
-            padding: 16px 28px;
-            border-bottom: 1px solid var(--border);
-            background: var(--surface);
+            padding: 14px 28px;
+            background: rgba(5, 5, 12, 0.45);
+            backdrop-filter: blur(24px) saturate(120%);
+            -webkit-backdrop-filter: blur(24px) saturate(120%);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+            box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.08), inset 0 0 0 1px rgba(255, 255, 255, 0.03);
             position: sticky;
             top: 0;
             z-index: 10;
@@ -56,204 +123,250 @@
         .logo-row {
             display: flex;
             align-items: center;
-            gap: 10px;
+            gap: 11px;
         }
 
         .logo-mark {
             width: 30px;
             height: 30px;
             border-radius: 8px;
-            background: var(--orange);
+            background: linear-gradient(135deg, #00E5FF 0%, #0090a0 100%);
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 16px;
+            font-size: 14px;
             font-weight: 900;
             color: #000;
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.25), 0 4px 16px -4px rgba(0, 0, 0, 0.5);
         }
 
         .logo-name {
             font-size: 16px;
             font-weight: 800;
-            color: #fff;
-        }
-
-        .logo-name span {
-            color: var(--orange);
+            letter-spacing: -0.3px;
         }
 
         .user-row {
             display: flex;
             align-items: center;
-            gap: 12px;
+            gap: 14px;
         }
 
         .user-name {
             font-size: 13px;
-            color: #555;
+            color: #3E3E52;
         }
 
         .btn-logout {
-            background: transparent;
-            border: 1px solid #1e1e1e;
-            color: #444;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            color: #8B8B9E;
             padding: 7px 14px;
             border-radius: 8px;
             font-size: 12px;
             font-weight: 600;
             cursor: pointer;
             font-family: inherit;
-            transition: all 0.15s;
+            transition: all 0.2s;
+            box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.06);
         }
 
         .btn-logout:hover {
-            border-color: #444;
-            color: #888;
+            border-color: rgba(255, 255, 255, 0.12);
+            color: #fff;
         }
 
-        /* Main */
+        .btn-logout:active {
+            transform: scale(0.97);
+        }
+
         .main {
-            max-width: 900px;
+            max-width: 980px;
             margin: 0 auto;
-            padding: 40px 24px;
+            padding: 44px 24px;
         }
 
         .page-header {
             display: flex;
             align-items: flex-end;
             justify-content: space-between;
-            margin-bottom: 32px;
+            margin-bottom: 36px;
         }
 
         .page-title {
-            font-size: 26px;
+            font-size: 28px;
             font-weight: 900;
-            color: #fff;
+            letter-spacing: -0.6px;
         }
 
         .page-sub {
             font-size: 13px;
-            color: #444;
-            margin-top: 4px;
+            color: #3E3E52;
+            margin-top: 5px;
         }
 
         .btn-create {
-            background: var(--orange);
+            background: linear-gradient(180deg, #14E8FF 0%, #00C4DD 100%);
             color: #000;
             border: none;
-            padding: 11px 22px;
+            padding: 11px 24px;
             border-radius: 10px;
             font-size: 13px;
             font-weight: 800;
             cursor: pointer;
             font-family: inherit;
-            transition: background 0.15s;
+            transition: all 0.25s cubic-bezier(0.22, 1, 0.36, 1);
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.25), 0 12px 32px -8px rgba(0, 0, 0, 0.5);
         }
 
         .btn-create:hover {
-            background: #fb923c;
+            transform: translateY(-2px);
+            filter: brightness(1.08);
+        }
+
+        .btn-create:active {
+            transform: scale(0.97);
         }
 
         /* Classroom grid */
         .classrooms-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-            gap: 16px;
+            grid-template-columns: repeat(auto-fill, minmax(272px, 1fr));
+            gap: 14px;
         }
 
         .class-card {
-            background: var(--surface);
-            border: 1px solid var(--border);
+            background: rgba(255, 255, 255, 0.02);
+            backdrop-filter: blur(24px) saturate(120%);
+            -webkit-backdrop-filter: blur(24px) saturate(120%);
+            border: 1px solid rgba(255, 255, 255, 0.04);
             border-radius: 14px;
-            padding: 22px;
+            padding: 24px;
             cursor: pointer;
-            transition: border-color 0.2s, transform 0.15s;
+            transition: all 0.2s ease-out;
             text-decoration: none;
             display: block;
+            color: inherit;
+            position: relative;
+            overflow: hidden;
+            box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.08), inset 0 0 0 1px rgba(255, 255, 255, 0.03), 0 24px 48px -12px rgba(0, 0, 0, 0.5);
+        }
+
+        .class-card::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 15%;
+            right: 15%;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.06), transparent);
         }
 
         .class-card:hover {
-            border-color: #f9731630;
-            transform: translateY(-2px);
+            border-color: rgba(0, 229, 255, 0.18);
+            background: rgba(255, 255, 255, 0.035);
+            transform: translateY(-4px);
+            box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.10), inset 0 0 0 1px rgba(255, 255, 255, 0.04), 0 40px 64px -16px rgba(0, 0, 0, 0.65);
         }
 
         .class-icon {
             width: 44px;
             height: 44px;
             border-radius: 12px;
-            background: var(--orange);
+            background: linear-gradient(135deg, #00E5FF 0%, #0090a0 100%);
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 22px;
-            margin-bottom: 14px;
+            margin-bottom: 16px;
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.25), 0 4px 16px -4px rgba(0, 0, 0, 0.5);
+        }
+
+        .class-icon svg {
+            width: 22px;
+            height: 22px;
+            stroke: #000;
+            fill: none;
+            stroke-width: 2;
+            stroke-linecap: round;
+            stroke-linejoin: round;
         }
 
         .class-name {
             font-size: 15px;
-            font-weight: 800;
-            color: #fff;
+            font-weight: 700;
             margin-bottom: 4px;
+            letter-spacing: -0.2px;
         }
 
         .class-id {
             font-size: 11px;
-            color: #444;
+            color: #3E3E52;
             font-weight: 600;
-            letter-spacing: 0.05em;
-            margin-bottom: 14px;
+            letter-spacing: 0.06em;
+            margin-bottom: 16px;
             font-family: monospace;
         }
 
         .class-stats {
             display: flex;
-            gap: 16px;
+            gap: 20px;
         }
 
         .class-stat-val {
-            font-size: 16px;
+            font-size: 17px;
             font-weight: 800;
-            color: var(--orange);
+            color: #00E5FF;
         }
 
         .class-stat-lbl {
             font-size: 10px;
-            color: #444;
+            color: #3E3E52;
             text-transform: uppercase;
-            letter-spacing: 0.06em;
+            letter-spacing: 0.07em;
             margin-top: 2px;
         }
 
         /* Empty state */
         .empty {
             text-align: center;
-            padding: 80px 24px;
+            padding: 90px 24px;
         }
 
         .empty-icon {
-            font-size: 52px;
-            margin-bottom: 16px;
+            margin-bottom: 18px;
+            color: #3E3E52;
+        }
+
+        .empty-icon svg {
+            width: 56px;
+            height: 56px;
+            stroke: currentColor;
+            fill: none;
+            stroke-width: 1.5;
+            stroke-linecap: round;
+            stroke-linejoin: round;
         }
 
         .empty-title {
-            font-size: 18px;
+            font-size: 20px;
             font-weight: 800;
-            color: #fff;
             margin-bottom: 6px;
+            letter-spacing: -0.3px;
         }
 
         .empty-sub {
             font-size: 13px;
-            color: #444;
-            margin-bottom: 24px;
+            color: #3E3E52;
+            margin-bottom: 26px;
         }
 
-        /* Modal overlay */
+        /* Modal */
         .modal-overlay {
             display: none;
             position: fixed;
             inset: 0;
-            background: rgba(0, 0, 0, 0.8);
+            background: rgba(0, 0, 0, 0.65);
+            backdrop-filter: blur(8px);
             z-index: 100;
             align-items: center;
             justify-content: center;
@@ -264,88 +377,118 @@
         }
 
         .modal {
-            background: var(--surface);
-            border: 1px solid #2a2a2a;
+            background: rgba(8, 8, 16, 0.85);
+            backdrop-filter: blur(48px) saturate(140%);
+            -webkit-backdrop-filter: blur(48px) saturate(140%);
+            border: 1px solid rgba(255, 255, 255, 0.06);
             border-radius: 18px;
-            padding: 32px;
+            padding: 36px;
             width: 100%;
-            max-width: 440px;
+            max-width: 450px;
             position: relative;
+            box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.08), inset 0 0 0 1px rgba(255, 255, 255, 0.03), 0 40px 80px -16px rgba(0, 0, 0, 0.75);
+        }
+
+        .modal::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 14%;
+            right: 14%;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.08), transparent);
         }
 
         .modal-title {
             font-size: 20px;
             font-weight: 800;
-            color: #fff;
             margin-bottom: 6px;
+            letter-spacing: -0.3px;
         }
 
         .modal-sub {
             font-size: 12px;
-            color: #444;
-            margin-bottom: 24px;
+            color: #3E3E52;
+            margin-bottom: 28px;
+            line-height: 1.55;
         }
 
         .modal-close {
             position: absolute;
             top: 20px;
             right: 20px;
-            background: transparent;
-            border: none;
-            color: #444;
-            font-size: 20px;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            color: #3E3E52;
+            width: 28px;
+            height: 28px;
+            border-radius: 7px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
             cursor: pointer;
-            line-height: 1;
+            transition: all 0.15s;
         }
 
         .modal-close:hover {
-            color: #888;
+            background: rgba(255, 59, 92, 0.08);
+            border-color: rgba(255, 59, 92, 0.18);
+            color: #FF3B5C;
+        }
+
+        .modal-close svg {
+            width: 14px;
+            height: 14px;
         }
 
         .field {
-            margin-bottom: 16px;
+            margin-bottom: 18px;
         }
 
         label {
             display: block;
             font-size: 11px;
             font-weight: 700;
-            color: #555;
+            color: #3E3E52;
             text-transform: uppercase;
-            letter-spacing: 0.07em;
-            margin-bottom: 6px;
+            letter-spacing: 0.08em;
+            margin-bottom: 7px;
         }
 
         input,
         select {
             width: 100%;
-            background: #0d0d0d;
-            border: 1px solid #1e1e1e;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.06);
             border-radius: 9px;
             padding: 11px 14px;
             font-size: 13px;
-            color: #e5e5e5;
+            color: #fff;
             font-family: inherit;
             outline: none;
-            transition: border-color 0.15s;
+            transition: all 0.2s;
+            box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.06);
         }
 
         input:focus,
         select:focus {
-            border-color: var(--orange);
+            border-color: rgba(0, 229, 255, 0.35);
+            background: rgba(0, 229, 255, 0.03);
+            box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.06), 0 0 0 3px rgba(0, 229, 255, 0.06);
         }
 
         input::placeholder {
-            color: #333;
+            color: #2a2a38;
         }
 
         select option {
-            background: #111;
+            background: #0a0a14;
         }
 
         .btn-primary {
             width: 100%;
-            background: var(--orange);
+            background: linear-gradient(180deg, #14E8FF 0%, #00C4DD 100%);
             color: #000;
             border: none;
             padding: 13px;
@@ -353,22 +496,28 @@
             font-size: 14px;
             font-weight: 800;
             cursor: pointer;
-            transition: background 0.15s;
             font-family: inherit;
+            transition: all 0.25s cubic-bezier(0.22, 1, 0.36, 1);
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.25), 0 12px 32px -8px rgba(0, 0, 0, 0.5);
         }
 
         .btn-primary:hover {
-            background: #fb923c;
+            transform: translateY(-2px);
+            filter: brightness(1.08);
         }
 
-        /* Generated ID preview */
+        .btn-primary:active {
+            transform: scale(0.97);
+        }
+
         .id-preview {
-            background: #0d0d0d;
-            border: 1px solid #f9731625;
+            background: rgba(0, 229, 255, 0.04);
+            border: 1px solid rgba(0, 229, 255, 0.14);
             border-radius: 10px;
             padding: 14px 16px;
             margin-bottom: 16px;
             display: none;
+            box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.06);
         }
 
         .id-preview.show {
@@ -378,7 +527,7 @@
         .id-label {
             font-size: 10px;
             font-weight: 700;
-            color: #555;
+            color: #3E3E52;
             text-transform: uppercase;
             letter-spacing: 0.08em;
             margin-bottom: 6px;
@@ -387,26 +536,48 @@
         .id-value {
             font-size: 20px;
             font-weight: 900;
-            color: var(--orange);
+            color: #00E5FF;
             letter-spacing: 0.05em;
             font-family: monospace;
         }
 
         .id-hint {
             font-size: 11px;
-            color: #444;
+            color: #3E3E52;
             margin-top: 4px;
+        }
+
+        ::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.06);
+            border-radius: 2px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(0, 229, 255, 0.2);
         }
     </style>
 </head>
 
 <body>
+    <div class="orb-field">
+        <div class="orb orb-cyan"></div>
+        <div class="orb orb-violet"></div>
+    </div>
+    <div class="grain"></div>
+    <div class="grid-mesh"></div>
 
-    <!-- Topbar -->
     <header class="topbar">
         <div class="logo-row">
             <div class="logo-mark">S</div>
-            <div class="logo-name">Syn<span>apse</span></div>
+            <div class="logo-name">Synapse</div>
         </div>
         <div class="user-row">
             <span class="user-name" id="userName"></span>
@@ -414,7 +585,6 @@
         </div>
     </header>
 
-    <!-- Main -->
     <main class="main">
         <div class="page-header">
             <div>
@@ -430,7 +600,12 @@
     <!-- Create Classroom Modal -->
     <div class="modal-overlay" id="modal">
         <div class="modal">
-            <button class="modal-close" onclick="closeModal()">✕</button>
+            <button class="modal-close" onclick="closeModal()">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+                    <line x1="18" y1="6" x2="6" y2="18" />
+                    <line x1="6" y1="6" x2="18" y2="18" />
+                </svg>
+            </button>
             <div class="modal-title">Create Classroom</div>
             <div class="modal-sub">Students will enter this classroom's ID in the Synapse extension to join.</div>
 
@@ -451,19 +626,18 @@
                 <input type="text" id="classBatch" placeholder="e.g. Feb 2026" oninput="previewId()" />
             </div>
 
-            <!-- Auto-generated ID preview -->
             <div class="id-preview" id="idPreview">
                 <div class="id-label">Classroom ID (auto-generated)</div>
-                <div class="id-value" id="idValue">—</div>
+                <div class="id-value" id="idValue">&mdash;</div>
                 <div class="id-hint">Share this with your students — they paste it in VS Code settings.</div>
             </div>
 
-            <button class="btn-primary" onclick="createClassroom()">Create Classroom →</button>
+            <button class="btn-primary" onclick="createClassroom()">Create Classroom</button>
         </div>
     </div>
 
     <script>
-        // ── Auth guard ──
+        // Auth guard
         const user = JSON.parse(localStorage.getItem('synapse_user') || 'null');
         if (!user || user.role !== 'teacher') { window.location.href = 'auth.html'; }
         document.getElementById('userName').textContent = user?.name || user?.email;
@@ -473,51 +647,57 @@
             window.location.href = 'auth.html';
         }
 
-        // ── Classroom storage (localStorage as mock DB) ──
+        // Classroom storage — keyed per teacher
+        const storageKey = `synapse_classrooms_${user.email.replace(/[^a-z0-9]/gi, '_')}`;
+
         function getClassrooms() {
-            return JSON.parse(localStorage.getItem('synapse_classrooms') || '[]');
+            return JSON.parse(localStorage.getItem(storageKey) || '[]');
         }
         function saveClassrooms(cls) {
-            localStorage.setItem('synapse_classrooms', JSON.stringify(cls));
+            localStorage.setItem(storageKey, JSON.stringify(cls));
         }
 
-        // ── Render grid ──
+        // Render grid
         function renderGrid() {
             const classrooms = getClassrooms();
             const grid = document.getElementById('classGrid');
             if (classrooms.length === 0) {
                 grid.innerHTML = `
-        <div class="empty" style="grid-column:1/-1">
-          <div class="empty-icon">🏫</div>
-          <div class="empty-title">No classrooms yet</div>
-          <div class="empty-sub">Create your first classroom and share the ID with your students.</div>
-          <button class="btn-create" onclick="openModal()">+ Create your first classroom</button>
-        </div>`;
+          <div class="empty" style="grid-column:1/-1">
+            <div class="empty-icon">
+              <svg viewBox="0 0 24 24"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+            </div>
+            <div class="empty-title">No classrooms yet</div>
+            <div class="empty-sub">Create your first classroom and share the ID with your students.</div>
+            <button class="btn-create" onclick="openModal()">+ Create your first classroom</button>
+          </div>`;
                 return;
             }
             grid.innerHTML = classrooms.map(c => `
-      <a class="class-card" href="index.html?classroomId=${c.id}&classroomName=${encodeURIComponent(c.name)}">
-        <div class="class-icon">🏫</div>
-        <div class="class-name">${c.name}</div>
-        <div class="class-id">ID: ${c.id}</div>
-        <div class="class-stats">
-          <div>
-            <div class="class-stat-val">${c.students || 0}</div>
-            <div class="class-stat-lbl">Students</div>
+        <a class="class-card" href="index.html?classroomId=${c.id}&classroomName=${encodeURIComponent(c.name)}">
+          <div class="class-icon">
+            <svg viewBox="0 0 24 24"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
           </div>
-          <div>
-            <div class="class-stat-val">${c.sessions || 0}</div>
-            <div class="class-stat-lbl">Sessions</div>
+          <div class="class-name">${c.name}</div>
+          <div class="class-id">ID: ${c.id}</div>
+          <div class="class-stats">
+            <div>
+              <div class="class-stat-val">${c.students || 0}</div>
+              <div class="class-stat-lbl">Students</div>
+            </div>
+            <div>
+              <div class="class-stat-val">${c.sessions || 0}</div>
+              <div class="class-stat-lbl">Sessions</div>
+            </div>
+            <div>
+              <div class="class-stat-val">${c.lang}</div>
+              <div class="class-stat-lbl">Language</div>
+            </div>
           </div>
-          <div>
-            <div class="class-stat-val">${c.lang}</div>
-            <div class="class-stat-lbl">Language</div>
-          </div>
-        </div>
-      </a>`).join('');
+        </a>`).join('');
         }
 
-        // ── ID generator ──
+        // ID generator
         function generateId(name, batch) {
             const prefix = (name || 'CLASS').replace(/[^a-zA-Z0-9]/g, '').substring(0, 6).toUpperCase();
             const year = new Date().getFullYear();
@@ -560,7 +740,6 @@
             renderGrid();
         }
 
-        // ── Boot ──
         renderGrid();
     </script>
 </body>

@@ -77,6 +77,20 @@ export class SynapseApi {
         await this.post('/quiz/results', { studentId, errorType, score, total, timestamp: new Date().toISOString() });
     }
 
+    async getHomework(classroomId: string): Promise<HWQuestion[]> {
+        const base = this.getBase();
+        if (!base) { return MOCK_HW_QUESTIONS; } // fallback to mock when no API
+
+        try {
+            const response = await fetch(`${base}/classroom/${encodeURIComponent(classroomId)}/homework`);
+            if (!response.ok) { return MOCK_HW_QUESTIONS; }
+            const data = await response.json() as { questions: HWQuestion[] };
+            return data.questions || [];
+        } catch {
+            return MOCK_HW_QUESTIONS;
+        }
+    }
+
     private async post(path: string, body: unknown): Promise<void> {
         const base = this.getBase();
         if (!base) { return; }
@@ -121,6 +135,35 @@ export interface QuizQuestion {
     correctIndex: number;
     explanation: string;
 }
+
+export interface HWQuestion {
+    id: string;
+    title: string;
+    body: string;       // multi-line problem statement
+    filename: string;   // e.g. hw_fibonacci_memoization.py
+    status: 'open' | 'closed';
+    dueDate: string | null;
+}
+
+// Fallback mock questions shown when no API is configured
+const MOCK_HW_QUESTIONS: HWQuestion[] = [
+    {
+        id: 'hw-001',
+        title: 'Fibonacci with Memoization',
+        body: 'Write a function fibonacci(n) that returns the nth Fibonacci number.\nUse memoization (a dictionary cache) to avoid redundant calculations.\nYour function must handle n=0 (returns 0) and n=1 (returns 1).\nExample: fibonacci(10) should return 55.',
+        filename: 'hw_fibonacci_memoization.py',
+        status: 'open',
+        dueDate: '2026-03-10',
+    },
+    {
+        id: 'hw-002',
+        title: 'Safe Dictionary Lookup',
+        body: 'Write a function get_user_email(users, user_id) that safely looks up a user email from a dictionary.\nReturn the email string if found, or "not found" if the user_id does not exist.\nDo NOT use try/except — use dict.get() instead.',
+        filename: 'hw_safe_dict_lookup.py',
+        status: 'open',
+        dueDate: '2026-03-08',
+    },
+];
 
 // ─── Hardcoded Quiz Questions (MVP — zero hallucination risk) ─────────────
 

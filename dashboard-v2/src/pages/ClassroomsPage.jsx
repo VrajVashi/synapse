@@ -124,21 +124,14 @@ export default function ClassroomsPage() {
 
     const storageKey = `synapse_classrooms_${user?.email?.replace(/[^a-z0-9]/gi, '_') || 'default'}`;
 
-    const saveToStorage = (list) => {
-        try { localStorage.setItem(storageKey, JSON.stringify(list)); } catch { }
-    };
-
-    // Fetch classrooms from backend on mount; fall back to localStorage
+    // Fetch classrooms from backend on mount
     useEffect(() => {
         (async () => {
             try {
                 const data = await API.getClassrooms();
-                const list = Array.isArray(data) && data.length > 0
-                    ? data
-                    : JSON.parse(localStorage.getItem(storageKey) || '[]');
-                setClassrooms(list);
+                setClassrooms(Array.isArray(data) ? data : []);
             } catch {
-                setClassrooms(JSON.parse(localStorage.getItem(storageKey) || '[]'));
+                setClassrooms([]);
             }
             setLoading(false);
         })();
@@ -146,23 +139,13 @@ export default function ClassroomsPage() {
 
     const createClassroom = async () => {
         if (!formName.trim()) return;
-
         try {
-            const created = await API.createClassroom({
-                name: formName.trim(),
-                lang: formLang,
-                batch: formBatch,
-            });
-            setClassrooms(prev => {
-                const updated = [...prev, created];
-                saveToStorage(updated);
-                return updated;
-            });
+            const created = await API.createClassroom({ name: formName.trim(), lang: formLang, batch: formBatch });
+            setClassrooms(prev => [...prev, created]);
             addToast('Classroom created!', 'success');
         } catch {
             addToast('Failed to create classroom', 'error');
         }
-
         setShowModal(false);
         setFormName(''); setFormBatch('');
     };

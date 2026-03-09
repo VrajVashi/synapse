@@ -1,6 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const Groq = require('groq-sdk');
+const bcrypt = require('bcryptjs');
 const { DynamoDBClient } = require('@aws-sdk/client-dynamodb');
 const { DynamoDBDocumentClient, GetCommand, PutCommand, UpdateCommand, ScanCommand, QueryCommand } = require('@aws-sdk/lib-dynamodb');
 const { S3Client, PutObjectCommand } = require('@aws-sdk/client-s3');
@@ -479,21 +480,101 @@ app.post('/analyze', async (req, res) => {
 });
 
 // ═══════════════════════════════════════════════════════════════════════════════
+// ROUTES — Auth  (DynamoDB: synapse-user-profiles)
+// POST /auth/signup  — create account (name, email, password, role)
+// POST /auth/login   — verify credentials, return user profile
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// Seed demo accounts (pre-hashed on first run via SEED_DONE flag)
+const DEMO_ACCOUNTS = [
+    { email: 'teacher@demo.com', password: 'demo1234', role: 'teacher', name: 'Demo Teacher' },
+    { email: 'student@demo.com', password: 'demo1234', role: 'student', name: 'Demo Student' },
+    { email: 'vraj@synapse.dev', password: 'demo1234', role: 'teacher', name: 'Vraj Vashi' },
+];
+let demoSeeded = false;
+async function seedDemoAccounts() {
+    if (demoSeeded) return;
+    demoSeeded = true;
+    for (const acct of DEMO_ACCOUNTS) {
+        try {
+            const existing = await db.send(new GetCommand({ TableName: USER_PROFILES_TABLE, Key: { user_id: acct.email } }));
+            if (!existing.Item) {
+                const hash = await bcrypt.hash(acct.password, 10);
+                await db.send(new PutCommand({ TableName: USER_PROFILES_TABLE, Item: { user_id: acct.email, email: acct.email, name: acct.name, role: acct.role, passwordHash: hash, createdAt: Date.now() } }));
+                console.log(`[Synapse Auth] Demo account seeded: ${acct.email}`);
+            }
+        } catch (e) { console.warn('[Synapse Auth] Seed error:', e.message); }
+    }
+}
+
+app.post('/auth/signup', async (req, res) => {
+    const { name, email, password, role } = req.body;
+    if (!email || !password || !name) return res.status(400).json({ error: 'Missing name, email or password' });
+    const uid = email.trim().toLowerCase();
+    try {
+        // Check if already exists
+        const existing = await db.send(new GetCommand({ TableName: USER_PROFILES_TABLE, Key: { user_id: uid } }));
+        if (existing.Item && existing.Item.passwordHash) return res.status(409).json({ error: 'Email already registered' });
+        const passwordHash = await bcrypt.hash(password, 10);
+        const newUser = { user_id: uid, email: uid, name: name.trim(), role: role || 'student', passwordHash, createdAt: Date.now(), quizResults: [] };
+        await db.send(new PutCommand({ TableName: USER_PROFILES_TABLE, Item: newUser }));
+        putMetric('Signups', 1, 'Count', [{ Name: 'Role', Value: role || 'student' }]);
+        console.log(`[Synapse Auth] New user: ${uid} (${role || 'student'})`);
+        const { passwordHash: _, ...safe } = newUser;
+        res.status(201).json({ user: { ...safe, id: uid } });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.post('/auth/login', async (req, res) => {
+    const { email, password } = req.body;
+    if (!email || !password) return res.status(400).json({ error: 'Missing email or password' });
+    const uid = email.trim().toLowerCase();
+    try {
+        await seedDemoAccounts();   // ensure demo accounts exist
+        const result = await db.send(new GetCommand({ TableName: USER_PROFILES_TABLE, Key: { user_id: uid } }));
+        if (!result.Item || !result.Item.passwordHash) return res.status(401).json({ error: 'Invalid credentials' });
+        const match = await bcrypt.compare(password, result.Item.passwordHash);
+        if (!match) return res.status(401).json({ error: 'Invalid credentials' });
+        const { passwordHash: _, ...safe } = result.Item;
+        putMetric('Logins', 1, 'Count');
+        console.log(`[Synapse Auth] Login: ${uid}`);
+        res.json({ user: { ...safe, id: uid } });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// ROUTES — Admin / SNS subscription
+// ═══════════════════════════════════════════════════════════════════════════════
+
+app.post('/admin/subscribe-alerts', async (req, res) => {
+    const { email } = req.body;
+    if (!email) return res.status(400).json({ error: 'Missing email' });
+    if (!ATRISK_TOPIC_ARN) return res.status(503).json({ error: 'SNS topic not configured' });
+    try {
+        const result = await sns.send(new SubscribeCommand({ TopicArn: ATRISK_TOPIC_ARN, Protocol: 'email', Endpoint: email }));
+        console.log(`[Synapse SNS] Subscribed ${email} to at-risk alerts`);
+        res.json({ ok: true, subscriptionArn: result.SubscriptionArn, message: `Confirmation email sent to ${email} — click to activate.` });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
 // STARTUP
 // ═══════════════════════════════════════════════════════════════════════════════
 
 app.listen(PORT, () => {
     console.log('');
-    console.log(`  ╔══════════════════════════════════════════════════╗`);
+    console.log(`  ╔════════════════════════════════════════════════╗`);
     console.log(`  ║  Synapse Backend · :${PORT}                           ║`);
     console.log(`  ║  AWS: DynamoDB · S3 · CloudWatch · SNS           ║`);
-    console.log(`  ╚══════════════════════════════════════════════════╝`);
+    console.log(`  ╚════════════════════════════════════════════════╝`);
     console.log('');
     console.log('  Region  :', AWS_REGION);
     console.log('  S3      :', SNAPSHOTS_BUCKET || '⚠ SNAPSHOTS_BUCKET not set');
     console.log('  SNS     :', ATRISK_TOPIC_ARN || '⚠ ATRISK_TOPIC_ARN not set');
     console.log('  CW NS   :', CW_NAMESPACE);
     console.log('');
+    console.log('  POST /auth/signup             → DynamoDB (bcrypt)');
+    console.log('  POST /auth/login              → DynamoDB (bcrypt)');
     console.log('  POST /sessions               → DynamoDB + S3 + CloudWatch + SNS');
     console.log('  POST /quiz/results           → DynamoDB + CloudWatch');
     console.log('  POST /classrooms             → DynamoDB + CloudWatch');
@@ -501,4 +582,5 @@ app.listen(PORT, () => {
     console.log('  POST /admin/subscribe-alerts → SNS email subscription');
     console.log('  POST /analyze                → Groq AI + CloudWatch');
     console.log('');
+    seedDemoAccounts();
 });

@@ -203,7 +203,7 @@ export default function AuthPage() {
                         </motion.div>
 
                         <motion.div custom={1} variants={proseFadeUp} initial="hidden" animate={inView1 ? 'visible' : 'hidden'}>
-                            <h2 className="text-2xl md:text-3xl font-bold leading-tight mb-5 bg-clip-text text-transparent" style={{ backgroundImage: 'linear-gradient(to right, #ffffff, rgba(255,255,255,0.6))' }}>
+                            <h2 className="text-2xl md:text-3xl font-bold leading-tight mb-5 bg-gradient-to-r from-rose-300 via-white/95 to-rose-200 bg-clip-text text-transparent">
                                 Students are drowning in silence.
                             </h2>
                         </motion.div>

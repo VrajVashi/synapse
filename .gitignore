@@ -19,6 +19,3 @@ Thumbs.db
 # Presentation & pitch docs (internal only)
 ppt.md
 pitch.md
-
-# Runtime persistence (backend-local)
-backend-local/data.json

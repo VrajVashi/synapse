@@ -1,8 +1,6 @@
 const express = require('express');
 const cors = require('cors');
 const Groq = require('groq-sdk');
-const fs = require('fs');
-const path = require('path');
 
 // Groq client for Tier 3 AI analysis
 // Set GROQ_API_KEY in your environment: $env:GROQ_API_KEY="gsk_..."
@@ -19,37 +17,8 @@ const PORT = process.env.PORT || 3001;
 // IN-MEMORY STATE  (persists only while server is running — perfect for demos)
 // ═══════════════════════════════════════════════════════════════════════════════
 
-// ─── Persistence helpers ────────────────────────────────────────────────────
-const DATA_FILE = path.join(__dirname, 'data.json');
-
-function loadData() {
-    try {
-        if (fs.existsSync(DATA_FILE)) {
-            const raw = fs.readFileSync(DATA_FILE, 'utf8');
-            const parsed = JSON.parse(raw);
-            return {
-                classrooms: parsed.classrooms || [],
-                homework: parsed.homework || null,
-            };
-        }
-    } catch (e) {
-        console.warn('[Synapse] Could not load data.json, starting fresh:', e.message);
-    }
-    return { classrooms: [], homework: null };
-}
-
-function saveData() {
-    try {
-        fs.writeFileSync(DATA_FILE, JSON.stringify({ classrooms, homework: SEED.homework }, null, 2), 'utf8');
-    } catch (e) {
-        console.warn('[Synapse] Could not save data.json:', e.message);
-    }
-}
-
-const _loaded = loadData();
-
 // Classrooms: { id, name, lang, batch, students: [studentId...], createdAt }
-let classrooms = _loaded.classrooms;
+let classrooms = [];
 
 // Ingested debug sessions from VS Code extension
 let sessions = [];
@@ -97,7 +66,7 @@ const SEED = {
         quizCompletionRate: 47,
         improvementVsLastWeek: '+12%',
     },
-    homework: _loaded.homework || [
+    homework: [
         { id: 'hw-001', classroomId: 'DEMO', title: 'Fibonacci with Memoization', body: 'Write a function fibonacci(n)...', filename: 'hw_fibonacci_memoization.py', status: 'open', dueDate: '2026-03-10', submissionCount: 18, totalStudents: 34, avgAttempts: 4.2 },
         { id: 'hw-002', classroomId: 'DEMO', title: 'Safe Dictionary Lookup', body: 'Write a function get_user_email(users, user_id)...', filename: 'hw_safe_dict_lookup.py', status: 'open', dueDate: '2026-03-08', submissionCount: 27, totalStudents: 34, avgAttempts: 2.1 },
     ],
@@ -355,7 +324,6 @@ app.post('/classrooms', (req, res) => {
         createdAt: Date.now(),
     };
     classrooms.push(classroom);
-    saveData();
     console.log(`[Synapse] Classroom created: ${id} (${name})`);
     res.status(201).json(classroom);
 });
@@ -389,7 +357,6 @@ app.post('/classrooms/:id/join', (req, res) => {
 
     if (!c.students.includes(studentId)) {
         c.students.push(studentId);
-        saveData();
         console.log(`[Synapse] Student joined: ${studentName || studentId} → ${c.id}`);
     }
     res.json({ ok: true, totalStudents: c.students.length });
@@ -423,7 +390,6 @@ app.post('/cohort/homework', (req, res) => {
         avgAttempts: 0,
     };
     SEED.homework.unshift(newQ);
-    saveData();
     console.log(`[Synapse] Homework created: ${newQ.title}`);
     res.status(201).json(newQ);
 });
@@ -432,7 +398,6 @@ app.post('/cohort/homework/:id/close', (req, res) => {
     const hw = SEED.homework.find(h => h.id === req.params.id);
     if (hw) {
         hw.status = 'closed';
-        saveData();
         console.log(`[Synapse] Homework closed: ${hw.title}`);
     }
     res.json({ ok: true });

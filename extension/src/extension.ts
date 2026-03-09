@@ -1,0 +1,417 @@
+import * as vscode from 'vscode';
+import * as path from 'path';
+import * as fs from 'fs';
+import { SynapseAnalyzer } from './pythonAnalyzer';
+import { SessionRecorder } from './sessionRecorder';
+import { ReplayPanel } from './replayPanel';
+import { QuizPanel } from './quizPanel';
+import { SynapseApi } from './api';
+import { SynapseViewProvider } from './sidebarProvider';
+import { v4 as uuidv4 } from 'uuid';
+
+let diagnosticCollection: vscode.DiagnosticCollection;
+let sessionRecorder: SessionRecorder;
+let analyzer: SynapseAnalyzer;
+let api: SynapseApi;
+let statusBarItem: vscode.StatusBarItem;
+let sidebarProvider: SynapseViewProvider;
+
+// Track issues from last analysis so the menu can show them
+let lastIssueCount = 0;
+let lastErrorTypes: string[] = [];
+
+export function activate(context: vscode.ExtensionContext) {
+    console.log('🧠 Synapse is now active!');
+
+    // Init core services
+    diagnosticCollection = vscode.languages.createDiagnosticCollection('synapse');
+    api = new SynapseApi();
+    sessionRecorder = new SessionRecorder(context, api);
+    analyzer = new SynapseAnalyzer(diagnosticCollection, sessionRecorder, api);
+
+    // Sidebar panel (Grammarly-style)
+    sidebarProvider = new SynapseViewProvider(context.extensionUri, context, api);
+
+    // Gate session tracking based on classroom membership
+    sidebarProvider.onClassroomChanged(() => {
+        sessionRecorder.setEnabled(sidebarProvider.isInClassroom());
+    });
+    // Set initial tracking state
+    sessionRecorder.setEnabled(sidebarProvider.isInClassroom());
+    context.subscriptions.push(
+        vscode.window.registerWebviewViewProvider(
+            SynapseViewProvider.viewType,
+            sidebarProvider,
+            { webviewOptions: { retainContextWhenHidden: true } }
+        )
+    );
+
+    // Status bar — clicking opens the Synapse menu popup
+    statusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 100);
+    statusBarItem.command = 'synapse.showMenu';
+    statusBarItem.text = '$(pulse) Synapse';
+    statusBarItem.tooltip = 'Synapse — Click to open menu';
+    statusBarItem.show();
+
+    // Register commands
+    context.subscriptions.push(
+
+        // ── NEW: Menu popup command ─────────────────────────────────────
+        vscode.commands.registerCommand('synapse.showMenu', () => {
+            showSynapseMenu(context);
+        }),
+
+        vscode.commands.registerCommand('synapse.showReplay', () => {
+            const studentId = getStudentId(context);
+            ReplayPanel.createOrShow(context.extensionUri, studentId, api);
+        }),
+
+        vscode.commands.registerCommand('synapse.showQuiz', (errorType?: string) => {
+            QuizPanel.createOrShow(context.extensionUri, errorType || 'none_handling');
+        }),
+
+        vscode.commands.registerCommand('synapse.showDNA', () => {
+            const studentId = getStudentId(context);
+            ReplayPanel.createOrShow(context.extensionUri, studentId, api, 'dna');
+        }),
+
+        vscode.commands.registerCommand('synapse.registerStudent', async () => {
+            const studentId = await vscode.window.showInputBox({
+                prompt: 'Enter your Synapse Student ID (get this from your instructor)',
+                placeHolder: 'e.g. MSB-2024-0042',
+                ignoreFocusOut: true
+            });
+            if (studentId) {
+                await context.globalState.update('synapse.studentId', studentId);
+                const config = vscode.workspace.getConfiguration('synapse');
+                await config.update('studentId', studentId, vscode.ConfigurationTarget.Global);
+                vscode.window.showInformationMessage(`✅ Synapse: Registered as ${studentId}!`);
+            }
+        }),
+
+        // ── Homework: open a HW question as a Python file ────────────────────
+        vscode.commands.registerCommand('synapse.openHomework', async (question: { id: string; title: string; body: string; filename: string }) => {
+            // 1. Need a workspace folder to write the file into
+            const workspaceFolders = vscode.workspace.workspaceFolders;
+            if (!workspaceFolders || workspaceFolders.length === 0) {
+                vscode.window.showErrorMessage(
+                    'Synapse: Please open a folder in VS Code first, then click the homework question again.'
+                );
+                return;
+            }
+
+            const workspaceRoot = workspaceFolders[0].uri.fsPath;
+            const filePath = path.join(workspaceRoot, question.filename);
+            const fileUri = vscode.Uri.file(filePath);
+
+            // 2. Build the Python file content — question as # comments at top
+            // Word-wrap long lines at ~70 chars so nothing gets truncated
+            const wrapLine = (line: string, maxLen: number = 68): string[] => {
+                if (line.length <= maxLen) { return [line]; }
+                const words = line.split(' ');
+                const lines: string[] = [];
+                let current = '';
+                for (const word of words) {
+                    if (current.length + word.length + 1 > maxLen && current.length > 0) {
+                        lines.push(current);
+                        current = word;
+                    } else {
+                        current = current ? current + ' ' + word : word;
+                    }
+                }
+                if (current) { lines.push(current); }
+                return lines;
+            };
+
+            const commentedBody = question.body
+                .split('\n')
+                .flatMap((line: string) => wrapLine(line))
+                .map((line: string) => `# ${line}`)
+                .join('\n');
+
+            const fileContent = [
+                `# ${'═'.repeat(44)}`,
+                `# SYNAPSE HOMEWORK: ${question.title}`,
+                `# ${'═'.repeat(44)}`,
+                `#`,
+                commentedBody,
+                `#`,
+                `# ${'─'.repeat(44)}`,
+                `# Write your solution below this line`,
+                `# ${'─'.repeat(44)}`,
+                ``,
+                ``,
+            ].join('\n');
+
+            // 3. Write the file (creates it fresh; silently overwrites if already exists)
+            try {
+                await vscode.workspace.fs.writeFile(fileUri, Buffer.from(fileContent, 'utf8'));
+            } catch (err) {
+                vscode.window.showErrorMessage(`Synapse: Could not create file — ${err}`);
+                return;
+            }
+
+            // 4. Open the file in the editor
+            const doc = await vscode.workspace.openTextDocument(fileUri);
+            await vscode.window.showTextDocument(doc);
+
+            // 5. Tag all future debug sessions on this file with the homeworkId
+            //    so instructor analytics can group by assignment.
+            sessionRecorder.setActiveHomework(question.id, question.filename);
+
+            vscode.window.showInformationMessage(
+                `✏️ Synapse: Opened "${question.title}" — good luck! Your debugging session is being tracked.`
+            );
+        })
+    );
+
+    // Auto-register if not set
+    ensureStudentRegistered(context);
+
+    // Watch Python files
+    const pythonWatcher = vscode.workspace.createFileSystemWatcher('**/*.py');
+
+    context.subscriptions.push(
+        vscode.workspace.onDidOpenTextDocument(doc => {
+            if (doc.languageId === 'python') {
+                analyzer.analyzeDocument(doc);
+            }
+        }),
+
+        vscode.workspace.onDidSaveTextDocument(doc => {
+            if (doc.languageId === 'python') {
+                analyzer.analyzeDocument(doc);
+                if (sidebarProvider.isInClassroom()) {
+                    sessionRecorder.onFileSaved(doc, getStudentId(context));
+                }
+                updateStatusBar(diagnosticCollection, doc.uri);
+            }
+        }),
+
+        vscode.workspace.onDidChangeTextDocument(event => {
+            if (event.document.languageId === 'python') {
+                analyzer.onDocumentChanged(event.document);
+                updateStatusBar(diagnosticCollection, event.document.uri);
+            }
+        }),
+
+        // ✅ THE RELIABLE FIX: fires AFTER diagnostics are written, not before
+        vscode.languages.onDidChangeDiagnostics(e => {
+            const activeDoc = vscode.window.activeTextEditor?.document;
+            if (!activeDoc || activeDoc.languageId !== 'python') { return; }
+            // Only care if the active file changed
+            const affected = e.uris.some(u => u.toString() === activeDoc.uri.toString());
+            if (!affected) { return; }
+            const diags = diagnosticCollection.get(activeDoc.uri) || [];
+            sidebarProvider.updateIssues(diags, getStudentId(context));
+            updateStatusBar(diagnosticCollection, activeDoc.uri);
+        }),
+
+        // Update sidebar when user switches files.
+        // NOTE: editor is undefined when a webview (quiz/replay) gets focus — don't clear in that case
+        vscode.window.onDidChangeActiveTextEditor(editor => {
+            if (!editor) { return; } // webview focused — keep existing sidebar state
+            if (editor.document.languageId === 'python') {
+                const diags = diagnosticCollection.get(editor.document.uri) || [];
+                sidebarProvider.updateIssues(diags, getStudentId(context));
+                updateStatusBar(diagnosticCollection, editor.document.uri);
+            } else {
+                sidebarProvider.clearIssues();
+            }
+        }),
+
+        diagnosticCollection,
+        statusBarItem,
+        pythonWatcher
+    );
+
+    // Analyze already-open Python files
+    vscode.workspace.textDocuments.forEach(doc => {
+        if (doc.languageId === 'python') {
+            analyzer.analyzeDocument(doc);
+        }
+    });
+
+    showWelcomeIfNew(context);
+}
+
+// ── Synapse QuickPick Menu ──────────────────────────────────────────────────
+async function showSynapseMenu(context: vscode.ExtensionContext) {
+    const studentId = getStudentId(context);
+    const activeDoc = vscode.window.activeTextEditor?.document;
+
+    // Get diagnostics for the active file
+    let fileDiags: readonly vscode.Diagnostic[] = [];
+    if (activeDoc) {
+        fileDiags = diagnosticCollection.get(activeDoc.uri) || [];
+    }
+
+    const issueCount = fileDiags.length;
+
+    // Build the error types found in the current file
+    const foundTypes = [...new Set(
+        fileDiags
+            .map(d => d.code?.toString() || '')
+            .filter(c => c.length > 0)
+    )];
+
+    // ── Header separator ──
+    const headerLabel = issueCount > 0
+        ? `$(warning) ${issueCount} pattern${issueCount > 1 ? 's' : ''} detected in this file`
+        : `$(check) No issues detected`;
+
+    type QuickPickItemWithAction = vscode.QuickPickItem & { action?: string; errorType?: string };
+
+    // ── Build menu items ──
+    const items: QuickPickItemWithAction[] = [];
+
+    // Issue-specific quiz shortcuts (only shown when issues exist)
+    if (foundTypes.length > 0) {
+        items.push({ label: '', kind: vscode.QuickPickItemKind.Separator, description: 'Fix Issues' } as any);
+
+        for (const errorType of foundTypes) {
+            const label = errorType.replace(/_/g, ' ');
+            items.push({
+                label: `$(mortar-board)  Take "${label}" Quiz`,
+                description: 'targeted for your current error pattern',
+                action: 'quiz',
+                errorType
+            });
+        }
+    }
+
+    // ── Core actions ──
+    items.push({ label: '', kind: vscode.QuickPickItemKind.Separator, description: 'Synapse Tools' } as any);
+
+    items.push({
+        label: '$(history)  Debugging Replay',
+        description: 'view your full session history & attempt timeline',
+        action: 'replay'
+    });
+
+    items.push({
+        label: '$(graph)  Debugging DNA Profile',
+        description: 'see your debugging style vs class average',
+        action: 'dna'
+    });
+
+    items.push({
+        label: '$(beaker)  Take a Quiz',
+        description: 'adaptive quiz based on your struggle patterns',
+        action: 'quiz',
+        errorType: foundTypes[0] || 'none_handling'
+    });
+
+    // ── Homework ──
+    items.push({ label: '', kind: vscode.QuickPickItemKind.Separator, description: 'Homework' } as any);
+    items.push({
+        label: '$(notebook)  View Homework Questions',
+        description: 'open a homework question as a Python file',
+        action: 'homework'
+    });
+
+    // ── Settings ──
+    items.push({ label: '', kind: vscode.QuickPickItemKind.Separator, description: 'Settings' } as any);
+
+    items.push({
+        label: '$(person)  Register Student ID',
+        description: `currently: ${studentId}`,
+        action: 'register'
+    });
+
+    items.push({
+        label: '$(list-unordered)  View All Issues',
+        description: 'open the Problems panel',
+        action: 'problems'
+    });
+
+    // ── Show QuickPick ──
+    const pick = await vscode.window.showQuickPick(items, {
+        title: `⚡ Synapse  —  ${headerLabel}`,
+        placeHolder: 'Select an action...',
+        matchOnDescription: true,
+    });
+
+    if (!pick || !pick.action) { return; }
+
+    switch (pick.action) {
+        case 'replay':
+            vscode.commands.executeCommand('synapse.showReplay');
+            break;
+        case 'dna':
+            vscode.commands.executeCommand('synapse.showDNA');
+            break;
+        case 'quiz':
+            vscode.commands.executeCommand('synapse.showQuiz', pick.errorType);
+            break;
+        case 'register':
+            vscode.commands.executeCommand('synapse.registerStudent');
+            break;
+        case 'problems':
+            vscode.commands.executeCommand('workbench.actions.view.problems');
+            break;
+        case 'homework':
+            vscode.commands.executeCommand('synapse.viewHomework');
+            break;
+    }
+}
+
+// ── Helpers ─────────────────────────────────────────────────────────────────
+function getStudentId(context: vscode.ExtensionContext): string {
+    const config = vscode.workspace.getConfiguration('synapse');
+    const configId = config.get<string>('studentId');
+    if (configId && configId.length > 0) { return configId; }
+    const storedId = context.globalState.get<string>('synapse.studentId');
+    if (storedId) { return storedId; }
+    const anonId = `anon-${uuidv4().substring(0, 8)}`;
+    context.globalState.update('synapse.studentId', anonId);
+    return anonId;
+}
+
+function updateStatusBar(dc: vscode.DiagnosticCollection, uri: vscode.Uri) {
+    const diags = dc.get(uri);
+    if (!diags || diags.length === 0) {
+        statusBarItem.text = '$(check) Synapse';
+        statusBarItem.tooltip = 'Synapse — No issues detected. Click to open menu.';
+        statusBarItem.backgroundColor = undefined;
+    } else {
+        const count = diags.length;
+        statusBarItem.text = `$(warning) Synapse  ${count} issue${count > 1 ? 's' : ''}`;
+        statusBarItem.tooltip = `Synapse — ${count} pattern${count > 1 ? 's' : ''} detected. Click to open menu.`;
+        statusBarItem.backgroundColor = new vscode.ThemeColor('statusBarItem.warningBackground');
+    }
+}
+
+async function ensureStudentRegistered(context: vscode.ExtensionContext) {
+    const stored = context.globalState.get<string>('synapse.studentId');
+    if (!stored) {
+        const action = await vscode.window.showInformationMessage(
+            '🧠 Synapse: Register to enable debugging session tracking and replay.',
+            'Register Now',
+            'Use Anonymous'
+        );
+        if (action === 'Register Now') {
+            vscode.commands.executeCommand('synapse.registerStudent');
+        }
+    }
+}
+
+async function showWelcomeIfNew(context: vscode.ExtensionContext) {
+    const welcomed = context.globalState.get<boolean>('synapse.welcomed');
+    if (!welcomed) {
+        await context.globalState.update('synapse.welcomed', true);
+        vscode.window.showInformationMessage(
+            '🧠 Synapse is active! Open a Python file to start debugging intelligence.',
+            'View Docs', 'Dismiss'
+        ).then(action => {
+            if (action === 'View Docs') {
+                vscode.env.openExternal(vscode.Uri.parse('https://github.com/VrajVashi/synapse'));
+            }
+        });
+    }
+}
+
+export function deactivate() {
+    diagnosticCollection?.dispose();
+    sessionRecorder?.dispose();
+}

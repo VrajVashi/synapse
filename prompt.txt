@@ -1,0 +1,556 @@
+You are adding a professional animation layer to the Synapse educator dashboard.
+The visual redesign is already done. You are ONLY adding motion — do not change 
+any colors, fonts, layout, spacing, or logic.
+
+---
+
+## STEP 0 — SETUP FRAMER MOTION
+
+First, check if framer-motion is already in package.json.
+If it is: import it where needed, do not reinstall.
+If it is NOT: run `npm install framer-motion` then proceed.
+
+Import pattern to use everywhere:
+  import { motion, AnimatePresence } from 'framer-motion'
+  import { useEffect, useRef, useState } from 'react'
+
+Create one shared file: src/lib/animations.ts
+Paste exactly this content into it — these are your animation presets,
+use them by name throughout every component, never invent new values:
+
+  // EASING CURVES
+  export const ease = {
+    snap: [0.19, 1, 0.22, 1],       // fast out, used for entrances
+    out: [0.0, 0.0, 0.2, 1],        // standard ease out
+    inOut: [0.76, 0, 0.24, 1],      // cinematic, used for page transitions
+    spring: { type: 'spring', stiffness: 400, damping: 30 },  // snappy spring
+    springSlug: { type: 'spring', stiffness: 200, damping: 25 }, // slower spring
+  }
+
+  // ENTRANCE VARIANTS — use these with motion components
+  export const fadeUp = {
+    hidden: { opacity: 0, y: 16 },
+    show: { opacity: 1, y: 0, transition: { duration: 0.4, ease: [0.19,1,0.22,1] } }
+  }
+
+  export const fadeIn = {
+    hidden: { opacity: 0 },
+    show: { opacity: 1, transition: { duration: 0.3, ease: [0.0,0.0,0.2,1] } }
+  }
+
+  export const slideInLeft = {
+    hidden: { opacity: 0, x: -24 },
+    show: { opacity: 1, x: 0, transition: { duration: 0.35, ease: [0.19,1,0.22,1] } }
+  }
+
+  export const clipReveal = {
+    hidden: { clipPath: 'inset(0 100% 0 0)' },
+    show: { clipPath: 'inset(0 0% 0 0)', 
+            transition: { duration: 0.6, ease: [0.76,0,0.24,1] } }
+  }
+
+  export const staggerContainer = (staggerChildren = 0.07, delayChildren = 0.1) => ({
+    hidden: {},
+    show: { transition: { staggerChildren, delayChildren } }
+  })
+
+  export const scaleIn = {
+    hidden: { opacity: 0, scale: 0.96 },
+    show: { opacity: 1, scale: 1, 
+            transition: { duration: 0.35, ease: [0.19,1,0.22,1] } }
+  }
+
+  // NUMBER COUNTER HOOK — for animating stat numbers
+  export function useCountUp(target: number, duration: number = 1200, 
+                              delay: number = 0) {
+    const [value, setValue] = useState(0)
+    useEffect(() => {
+      let startTime: number | null = null
+      let frameId: number
+      const delayTimeout = setTimeout(() => {
+        const step = (timestamp: number) => {
+          if (!startTime) startTime = timestamp
+          const progress = Math.min((timestamp - startTime) / duration, 1)
+          const eased = 1 - Math.pow(1 - progress, 3) // ease out cubic
+          setValue(Math.floor(eased * target))
+          if (progress < 1) frameId = requestAnimationFrame(step)
+          else setValue(target)
+        }
+        frameId = requestAnimationFrame(step)
+      }, delay)
+      return () => { clearTimeout(delayTimeout); cancelAnimationFrame(frameId) }
+    }, [target, duration, delay])
+    return value
+  }
+
+  // BAR FILL HOOK — returns 0 to width% for progress bars
+  export function useBarFill(targetPercent: number, delay: number = 0) {
+    const [width, setWidth] = useState(0)
+    useEffect(() => {
+      const timeout = setTimeout(() => setWidth(targetPercent), delay + 100)
+      return () => clearTimeout(timeout)
+    }, [targetPercent, delay])
+    return width
+  }
+
+---
+
+## STEP 1 — PAGE TRANSITION WRAPPER
+
+Find the root layout component that wraps every page 
+(likely App.tsx, Layout.tsx, or wherever your router renders children).
+
+Wrap the page outlet/children with this exact pattern:
+
+  <AnimatePresence mode="wait">
+    <motion.div
+      key={currentRoute}        // use the current pathname as key
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -8 }}
+      transition={{ duration: 0.25, ease: [0.19, 1, 0.22, 1] }}
+      style={{ width: '100%', height: '100%' }}
+    >
+      {children}
+    </motion.div>
+  </AnimatePresence>
+
+The key={currentRoute} is critical — without it AnimatePresence won't 
+detect page changes. Use useLocation() from react-router to get it.
+Exit animation is subtle upward — not a full slide, just 8px up and fade.
+Enter animation is 12px up from below and fade in. Duration: 250ms.
+This should feel like a clean page flip, not a dramatic slide show.
+
+---
+
+## STEP 2 — SIDEBAR ANIMATIONS
+
+Find the Sidebar component.
+
+1. Wrap the entire sidebar nav list in:
+   <motion.nav variants={staggerContainer(0.05, 0.1)} 
+               initial="hidden" animate="show">
+
+2. Wrap each individual nav item in:
+   <motion.div variants={slideInLeft}>
+
+3. The active nav item indicator (yellow left border):
+   Replace the CSS border-left with a motion.div positioned absolutely:
+     <motion.div
+       layoutId="activeNavIndicator"
+       style={{
+         position: 'absolute', left: 0, top: 0, bottom: 0,
+         width: '3px', background: '#E8FF47'
+       }}
+       transition={{ ...ease.spring }}
+     />
+   This makes the yellow indicator SLIDE between nav items when you 
+   click a different route — it physically travels from one to the next.
+   This is the most impressive single animation in the app. Do not skip it.
+
+4. Nav item text on hover:
+   <motion.span whileHover={{ x: 3 }} transition={{ duration: 0.15 }}>
+   3px nudge to the right on hover. Subtle directional signal.
+
+---
+
+## STEP 3 — /auth PAGE ANIMATIONS
+
+Find the Auth page component.
+
+Animate elements in this exact sequence with these exact delays:
+
+1. Logo/S icon:
+   initial={{ opacity: 0, scale: 0.8 }}
+   animate={{ opacity: 1, scale: 1 }}
+   transition={{ duration: 0.4, ease: [0.19,1,0.22,1], delay: 0 }}
+
+2. "DEBUGGING INTELLIGENCE" headline:
+   Use clipReveal variant — the text reveals from left to right like a 
+   curtain pulling back. This is the cinematic hero moment of this page.
+   initial={{ clipPath: 'inset(0 100% 0 0)' }}
+   animate={{ clipPath: 'inset(0 0% 0 0)' }}
+   transition={{ duration: 0.7, ease: [0.76,0,0.24,1], delay: 0.15 }}
+
+3. "for Educators" subheading:
+   variants={fadeUp}, delay: 0.5
+
+4. Italic description line:
+   variants={fadeUp}, delay: 0.6
+
+5. The form card:
+   initial={{ opacity: 0, y: 24 }}
+   animate={{ opacity: 1, y: 0 }}
+   transition={{ duration: 0.5, ease: [0.19,1,0.22,1], delay: 0.35 }}
+
+6. Inside the form card, stagger these children with 0.06s between each:
+   - Sign In / Sign Up tabs
+   - Demo Teacher / Demo Student buttons
+   - EMAIL label + input
+   - PASSWORD label + input
+   - Sign In button
+   Each child: fadeUp variant
+
+7. Sign In button hover state:
+   whileHover={{ scale: 1.02 }}
+   whileTap={{ scale: 0.98 }}
+   transition={{ ...ease.spring }}
+   The scale is tiny — 1.02 not 1.1. Just enough to feel alive.
+
+---
+
+## STEP 4 — /classrooms PAGE ANIMATIONS
+
+Find the Classrooms page component.
+
+1. "MY CLASSROOMS" title:
+   clipReveal — left to right curtain, duration 0.6s, delay 0.1s
+
+2. Subtitle text:
+   fadeUp, delay 0.3s
+
+3. "+ New Classroom" button:
+   fadeIn, delay 0.35s
+   whileHover: background color transition is already CSS — 
+   additionally add: whileHover={{ scale: 1.02 }}, whileTap={{ scale: 0.97 }}
+
+4. Classroom cards grid:
+   Wrap the grid container: variants={staggerContainer(0.08, 0.2)} 
+   initial="hidden" animate="show"
+   
+   Each classroom card:
+   variants={scaleIn}
+   whileHover={{ y: -4, borderColor: '#E8FF47' }}
+   transition for hover: { duration: 0.2, ease: [0.0,0.0,0.2,1] }
+   The card lifts 4px on hover — combined with the border color CSS 
+   transition already in place this makes it feel pressable and real.
+
+5. The watermark background letter on each card:
+   initial={{ opacity: 0 }}
+   animate={{ opacity: 1 }}
+   transition={{ duration: 0.8, delay: 0.4 }}
+   It should fade in after the card itself — ghostly reveal.
+
+---
+
+## STEP 5 — /overview PAGE ANIMATIONS
+
+This page has the most animations. Do them in this order.
+
+### Stat Cards (the 4 metric cards at top)
+
+Wrap all 4 cards in: variants={staggerContainer(0.1, 0.15)} 
+                      initial="hidden" animate="show"
+
+Each card: variants={fadeUp}
+
+Inside each stat card, the BIG NUMBER uses useCountUp:
+
+  Total Debug Sessions (1847):
+    const count = useCountUp(1847, 1400, 200)
+    Render: {count.toLocaleString()}
+
+  Avg Fix Time (13):
+    const count = useCountUp(13, 800, 350)
+    Render: {count} <span>min</span>
+
+  Quiz Completion Rate (47):
+    const count = useCountUp(47, 900, 450)
+    Render: {count}<span>%</span>
+
+  At-Risk Students (4):
+    const count = useCountUp(4, 600, 550)
+    Render: {count}
+
+The delays are staggered so each number starts counting after the 
+previous one — creates a cascading data-loading feel.
+
+The sparkline charts inside each card:
+  initial={{ opacity: 0, scaleX: 0 }}
+  animate={{ opacity: 1, scaleX: 1 }}
+  transition={{ duration: 0.6, ease: [0.19,1,0.22,1], delay: 0.6 }}
+  style={{ transformOrigin: 'left center' }}
+Charts grow from left to right like they are being drawn live.
+
+### "Top Struggles This Week" panel
+
+Panel itself: fadeUp, delay 0.3s
+
+Each struggle row staggered with 0.08s between rows:
+  Wrap rows: variants={staggerContainer(0.08, 0.4)}
+  Each row: variants={fadeUp}
+
+Each row's progress bar:
+  Use useBarFill(targetPercent, rowIndex * 80 + 400)
+  Apply as: style={{ width: `${barWidth}%` }}
+  Add CSS: transition: width 0.8s cubic-bezier(0.19, 1, 0.22, 1)
+  Bars fill from left to right with staggered delays.
+  Row 1 (None/Null Handling 73%): delay 400ms
+  Row 2 (Async/Await 58%): delay 480ms
+  Row 3 (Missing try/except 45%): delay 560ms
+
+### "Students Needing Attention" panel
+
+Panel itself: fadeUp, delay 0.4s
+
+Each student row staggered 0.07s apart:
+  Wrap: variants={staggerContainer(0.07, 0.5)}
+  Each row: variants={slideInLeft}
+
+Each badge on the right:
+  initial={{ opacity: 0, scale: 0.85 }}
+  animate={{ opacity: 1, scale: 1 }}
+  transition={{ duration: 0.3, ease: [0.19,1,0.22,1], delay: rowIndex * 0.07 + 0.6 }}
+
+### "+12% vs last week" label under Total Debug Sessions:
+  initial={{ opacity: 0 }}
+  animate={{ opacity: 1 }}
+  transition={{ delay: 1.2, duration: 0.4 }}
+  This appears last — after the number has finished counting.
+
+---
+
+## STEP 6 — /heatmap PAGE ANIMATIONS
+
+Find the Struggle Heatmap page component.
+
+1. "STRUGGLE HEATMAP" title: clipReveal, duration 0.65s, delay 0.1s
+
+2. Column headers row: fadeIn, delay 0.3s
+
+3. Each heatmap row staggered — this is the main event on this page:
+   Wrap all rows: variants={staggerContainer(0.1, 0.25)} 
+                  initial="hidden" animate="show"
+   
+   Each row:
+   variants={{
+     hidden: { opacity: 0, x: -20 },
+     show: { opacity: 1, x: 0, transition: { duration: 0.4, ease: [0.19,1,0.22,1] } }
+   }}
+   
+   Rows slide in from the left one by one. Row 1 arrives first, 
+   Row 5 arrives last. 100ms between each.
+
+4. The rank number (1, 2, 3, 4, 5) on each row:
+   As the row slides in, the number counts up from 0:
+   useCountUp(rankNumber, 300, rowIndex * 100 + 250)
+   1 → 2 → 3 → 4 → 5 ticking up as each row arrives.
+
+5. The attempt count number on each row:
+   useCountUp(attempts, 900, rowIndex * 100 + 300)
+   All 5 counts run simultaneously but with staggered starts.
+
+6. The crash % on each row:
+   useCountUp(crashPercent, 700, rowIndex * 100 + 400)
+   Ticks up from 0 to 73%, 58%, 45%, 34%, 28% in sequence.
+
+7. Each row's bar:
+   useBarFill(severityPercent, rowIndex * 100 + 300)
+   CSS: transition: width 0.9s cubic-bezier(0.19, 1, 0.22, 1)
+   Bars draw left to right as rows appear.
+
+8. Row hover (already styled in CSS):
+   Add: whileHover={{ x: 4 }}
+   transition: { duration: 0.15, ease: [0.0,0.0,0.2,1] }
+   The entire row nudges 4px right on hover — makes the table 
+   feel interactive and selectable.
+
+---
+
+## STEP 7 — /at-risk PAGE ANIMATIONS
+
+Find the At-Risk Students page component.
+Note: from the screenshots this page may currently be empty or minimal.
+Apply these regardless — they will activate when data renders.
+
+1. "AT-RISK STUDENTS" title: clipReveal, delay 0.1s
+
+2. If there is a filter/tab bar at the top: fadeIn, delay 0.25s
+
+3. Each student card/row:
+   Wrap container: variants={staggerContainer(0.09, 0.2)}
+   Each card: 
+   variants={{
+     hidden: { opacity: 0, y: 20 },
+     show: { opacity: 1, y: 0, 
+             transition: { duration: 0.4, ease: [0.19,1,0.22,1] } }
+   }}
+
+4. The badge on each student (1-on-1 recommended / Quiz not started / 
+   Below 40% quiz rate):
+   initial={{ opacity: 0, scale: 0.8 }}
+   animate={{ opacity: 1, scale: 1 }}
+   transition={{ duration: 0.25, ease: [0.19,1,0.22,1], 
+                 delay: cardIndex * 0.09 + 0.4 }}
+
+5. If there is a "requires intervention" count number anywhere:
+   useCountUp(count, 600, 200)
+
+6. Student card hover:
+   whileHover={{ y: -2, borderColor: '#FF6B35' }}
+   transition={{ duration: 0.15 }}
+   Cards lift slightly and border goes orange on hover — 
+   reinforcing the urgency signal.
+
+---
+
+## STEP 8 — /student PAGE ANIMATIONS
+
+Find the Student onboarding page (/student).
+
+1. "WELCOME, DEMO STUDENT" title:
+   Split into two parts:
+   - "WELCOME," — fadeUp, delay 0.1s
+   - "DEMO STUDENT" (the yellow part) — clipReveal left to right, delay 0.3s
+   This makes the name feel like it was revealed/identified.
+
+2. Subtitle "Follow these 3 steps...": fadeUp, delay 0.5s
+
+3. Each step card staggered:
+   Wrap: variants={staggerContainer(0.12, 0.4)}
+   Each step card:
+   variants={{
+     hidden: { opacity: 0, x: -32 },
+     show: { opacity: 1, x: 0, 
+             transition: { duration: 0.45, ease: [0.19,1,0.22,1] } }
+   }}
+   Steps slide in from left one after another — 
+   Step 1 arrives, then Step 2, then Step 3. Like a checklist populating.
+
+4. The step number badge (yellow square with 1/2/3):
+   As each step card arrives, the number inside pops in:
+   initial={{ scale: 0, rotate: -10 }}
+   animate={{ scale: 1, rotate: 0 }}
+   transition={{ ...ease.spring, delay: stepIndex * 0.12 + 0.5 }}
+
+5. The code block (JSON config display):
+   initial={{ opacity: 0 }}
+   animate={{ opacity: 1 }}
+   transition={{ delay: 0.9, duration: 0.5 }}
+   Appears last — like the terminal is loading it.
+
+6. "Save ID" button:
+   whileHover={{ scale: 1.03 }}
+   whileTap={{ scale: 0.97 }}
+   transition={{ ...ease.spring }}
+
+---
+
+## STEP 9 — /homework PAGE ANIMATIONS
+
+Find the Homework page component.
+
+1. "HOMEWORK" title: clipReveal, delay 0.1s
+
+2. "HOMEWORK QUESTIONS" section header + subtitle: fadeUp, delay 0.25s
+
+3. "+ New Question" button: fadeIn, delay 0.3s
+
+4. Each assignment card staggered:
+   Wrap: variants={staggerContainer(0.1, 0.3)}
+   Each card:
+   variants={{
+     hidden: { opacity: 0, y: 16 },
+     show: { opacity: 1, y: 0, 
+             transition: { duration: 0.4, ease: [0.19,1,0.22,1] } }
+   }}
+
+5. Inside each card, the submission count (18/34, 27/34):
+   The bold colored number animates:
+   useCountUp(submissionCount, 700, cardIndex * 100 + 400)
+   useCountUp(totalCount, 400, cardIndex * 100 + 200)
+   Both numbers count up — total first, then submissions fill in.
+
+6. The submission % text (53% submitted, 79% submitted):
+   useCountUp(percent, 700, cardIndex * 100 + 450)
+   Renders as: {count}% submitted
+
+7. Each card's progress bar:
+   useBarFill(submissionPercent, cardIndex * 100 + 350)
+   CSS: transition: width 1s cubic-bezier(0.19, 1, 0.22, 1)
+   Bar fills after card appears.
+
+8. The OPEN badge on each card:
+   initial={{ opacity: 0, x: 8 }}
+   animate={{ opacity: 1, x: 0 }}
+   transition={{ delay: cardIndex * 0.1 + 0.5, duration: 0.25 }}
+   Slides in from the right.
+
+9. Assignment card hover:
+   whileHover={{ y: -3 }}
+   transition={{ duration: 0.18, ease: [0.0,0.0,0.2,1] }}
+
+---
+
+## GLOBAL RULES FOR ALL ANIMATIONS
+
+### Performance rules — follow these exactly:
+- Every motion.div that animates position MUST have: style={{ willChange: 'transform' }}
+  Add this only to elements that actually move (not fade-only elements)
+- Never animate width/height directly — use scaleX/scaleY or CSS transitions 
+  for bars and panels (exception: progress bars use CSS transition on width, 
+  this is fine and intentional)
+- Never use motion on elements that repeat in a list of more than 20 items
+  (if a student list has 30+ rows, animate only the container fadeIn, 
+  not each individual row)
+
+### Accessibility:
+Wrap all animation logic with a prefers-reduced-motion check.
+In your animations.ts file add at the top:
+  export const prefersReducedMotion = 
+    typeof window !== 'undefined' 
+    ? window.matchMedia('(prefers-reduced-motion: reduce)').matches 
+    : false
+
+Then in every component that uses framer-motion variants:
+  const shouldAnimate = !prefersReducedMotion
+  initial={shouldAnimate ? "hidden" : false}
+  animate={shouldAnimate ? "show" : false}
+
+### Timing rules — never deviate:
+- No single animation duration exceeds 900ms
+- No entrance delay exceeds 800ms from page load
+- Stagger between sibling items: 60ms to 120ms (never more)
+- Counter animations: 600ms to 1400ms depending on size of number
+- Page transition in: exactly 250ms
+- Page transition out: exactly 180ms
+- Hover responses: 120ms to 200ms maximum
+- Spring animations: stiffness 400 damping 30 (snap) or 200/25 (slug)
+
+### What to NEVER animate:
+- Do NOT animate the sidebar itself sliding in/out
+- Do NOT animate the top header bar
+- Do NOT animate text that is longer than one line (paragraph text)
+- Do NOT add any looping/idle animations anywhere
+- Do NOT add scroll-triggered animations (everything animates on mount)
+- Do NOT animate color changes with framer-motion (use CSS transition for color)
+- Do NOT add any animation to form inputs themselves (labels, placeholders)
+- Do NOT use AnimatePresence on anything except page transitions and 
+  conditional renders (like modals, dropdowns if they exist)
+
+---
+
+## EXECUTION ORDER
+
+Do these in this exact sequence, one file at a time:
+
+1. Create src/lib/animations.ts with full content from STEP 0
+2. Install framer-motion if not present, verify import works
+3. Find and wrap the root layout with AnimatePresence page transition (STEP 1)
+4. Animate Sidebar component (STEP 2) — test the layoutId indicator slides
+5. Animate /auth page (STEP 3)
+6. Animate /classrooms page (STEP 4)
+7. Animate /overview page (STEP 5) — most complex, do stat cards first, 
+   then struggles panel, then students panel
+8. Animate /heatmap page (STEP 6)
+9. Animate /at-risk page (STEP 7)
+10. Animate /student page (STEP 8)
+11. Animate /homework page (STEP 9)
+12. Final check: open every page, verify no animation is janky or 
+    overlapping with another, verify numbers count up correctly, 
+    verify bars fill correctly, verify page transitions work on 
+    every route change
+13. Check browser console for any framer-motion warnings and fix them
+
+Do not proceed to the next page until the current page's animations 
+are confirmed working correctly.

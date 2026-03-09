@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Synapse — Instructor Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap"
+    rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+
+<body>
+
+  <!-- Ambient background system -->
+  <div class="orb-field">
+    <div class="orb orb-cyan"></div>
+    <div class="orb orb-violet"></div>
+  </div>
+  <div class="grain"></div>
+  <div class="grid-mesh"></div>
+
+  <!-- ── Sidebar ─────────────────────────────────────────────────────── -->
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-mark">S</div>
+      <span class="logo-name">Synapse</span>
+    </div>
+
+    <nav class="sidebar-nav">
+      <a href="#" class="nav-item active" data-view="overview">
+        <span class="nav-icon">
+          <svg viewBox="0 0 24 24">
+            <rect x="3" y="3" width="7" height="7" rx="1.5" />
+            <rect x="14" y="3" width="7" height="7" rx="1.5" />
+            <rect x="3" y="14" width="7" height="7" rx="1.5" />
+            <rect x="14" y="14" width="7" height="7" rx="1.5" />
+          </svg>
+        </span> Overview
+      </a>
+      <a href="#" class="nav-item" data-view="heatmap">
+        <span class="nav-icon">
+          <svg viewBox="0 0 24 24">
+            <path d="M12 2L2 7l10 5 10-5-10-5z" />
+            <path d="M2 17l10 5 10-5" />
+            <path d="M2 12l10 5 10-5" />
+          </svg>
+        </span> Struggle Heatmap
+      </a>
+      <a href="#" class="nav-item" data-view="students">
+        <span class="nav-icon">
+          <svg viewBox="0 0 24 24">
+            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+            <circle cx="9" cy="7" r="4" />
+            <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+            <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+          </svg>
+        </span> At-Risk Students
+      </a>
+      <a href="#" class="nav-item" data-view="mastery">
+        <span class="nav-icon">
+          <svg viewBox="0 0 24 24">
+            <path d="M22 12h-4l-3 9L9 3l-3 9H2" />
+          </svg>
+        </span> Mastery Tracking
+      </a>
+      <a href="#" class="nav-item" data-view="curriculum">
+        <span class="nav-icon">
+          <svg viewBox="0 0 24 24">
+            <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" />
+            <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" />
+          </svg>
+        </span> Curriculum Insights
+      </a>
+      <a href="#" class="nav-item" data-view="homework">
+        <span class="nav-icon">
+          <svg viewBox="0 0 24 24">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+            <polyline points="14 2 14 8 20 8" />
+            <line x1="16" y1="13" x2="8" y2="13" />
+            <line x1="16" y1="17" x2="8" y2="17" />
+          </svg>
+        </span> Homework
+      </a>
+    </nav>
+
+    <div class="sidebar-footer">
+      <div class="cohort-badge">
+        <div class="cohort-dot"></div>
+        <span id="cohortName">Loading...</span>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ── Main ───────────────────────────────────────────────────────── -->
+  <main class="main">
+
+    <!-- Topbar -->
+    <header class="topbar">
+      <div class="topbar-left">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px">
+          <a href="classrooms.html"
+            style="color:var(--text3);font-size:12px;text-decoration:none;display:flex;align-items:center;gap:4px;transition:color 0.2s"
+            onmouseover="this.style.color='var(--cyan)'" onmouseout="this.style.color='var(--text3)'">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="15 18 9 12 15 6" />
+            </svg>
+            Classrooms
+          </a>
+        </div>
+        <h1 class="page-title" id="pageTitle">Overview</h1>
+        <div class="page-sub" id="pageSub">Loading cohort data...</div>
+      </div>
+      <div class="topbar-right">
+        <div class="topbar-stat">
+          <span class="ts-label">Active today</span>
+          <span class="ts-value" id="activeToday">&mdash;</span>
+        </div>
+        <div class="topbar-stat">
+          <span class="ts-label">Total students</span>
+          <span class="ts-value" id="totalStudents">&mdash;</span>
+        </div>
+        <button class="btn-export" onclick="logout()">Sign Out</button>
+      </div>
+    </header>
+
+    <!-- ── Views ────────────────────────────────────────────────────── -->
+
+    <!-- Overview view -->
+    <section class="view active" id="view-overview">
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-label">Total Debug Sessions</div>
+          <div class="stat-value" id="ov-sessions">&mdash;</div>
+          <div class="stat-delta positive" id="ov-delta">+12% vs last week</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Avg Fix Time</div>
+          <div class="stat-value"><span id="ov-avgfix">&mdash;</span><span class="stat-unit">min</span></div>
+          <div class="stat-delta">cohort average</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Quiz Completion Rate</div>
+          <div class="stat-value progress-val"><span id="ov-quiz">&mdash;</span><span class="stat-unit">%</span></div>
+          <div class="progress-bar-sm">
+            <div class="pb-fill" id="ov-quizbar"></div>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">At-Risk Students</div>
+          <div class="stat-value warn" id="ov-atrisk">&mdash;</div>
+          <div class="stat-delta warn">require intervention</div>
+        </div>
+      </div>
+
+      <div class="two-col">
+        <!-- Top struggles -->
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">Top Struggles This Week</div>
+            <a href="#" class="card-link" data-view="heatmap">See all &rarr;</a>
+          </div>
+          <div class="heatmap-list" id="ov-heatmap"></div>
+        </div>
+
+        <!-- At risk preview -->
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">Students Needing Attention</div>
+            <a href="#" class="card-link" data-view="students">See all &rarr;</a>
+          </div>
+          <div class="risk-list" id="ov-risk"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Heatmap view -->
+    <section class="view" id="view-heatmap">
+      <div class="card full-card">
+        <div class="card-header">
+          <div class="card-title">Struggle Heatmap &mdash; Last 7 Days</div>
+          <div class="card-sub">Ranked by number of debugging attempts across cohort</div>
+        </div>
+        <div class="heatmap-full" id="hm-full"></div>
+      </div>
+    </section>
+
+    <!-- At-risk students view -->
+    <section class="view" id="view-students">
+      <div class="card full-card">
+        <div class="card-header">
+          <div class="card-title">At-Risk Students</div>
+          <div class="card-sub">Flagged based on attempt count, quiz completion, and time-to-fix patterns</div>
+        </div>
+        <table class="students-table">
+          <thead>
+            <tr>
+              <th>Student</th>
+              <th>Error Pattern</th>
+              <th>Attempts</th>
+              <th>vs Class Avg</th>
+              <th>Last Active</th>
+              <th>Recommended Action</th>
+            </tr>
+          </thead>
+          <tbody id="students-body"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Mastery view -->
+    <section class="view" id="view-mastery">
+      <div class="card full-card">
+        <div class="card-header">
+          <div class="card-title">Concept Mastery Tracking</div>
+          <div class="card-sub">Based on quiz completion rates and time-to-fix improvements</div>
+        </div>
+        <div class="mastery-list" id="mastery-list"></div>
+      </div>
+    </section>
+
+    <!-- Curriculum insights view -->
+    <section class="view" id="view-curriculum">
+      <div class="card full-card">
+        <div class="card-header">
+          <div class="card-title">Curriculum Optimization Insights</div>
+          <div class="card-sub">AI-generated recommendations based on real student struggle timing</div>
+        </div>
+        <div class="curriculum-list" id="curriculum-list"></div>
+      </div>
+    </section>
+
+    <!-- Homework view -->
+    <section class="view" id="view-homework">
+      <div class="card full-card">
+        <div class="card-header">
+          <div class="card-title">Homework Questions</div>
+          <button class="btn-export" id="btn-new-hw" style="cursor:pointer">+ New Question</button>
+        </div>
+        <div class="card-sub" style="padding:0 0 16px 0;color:var(--text3);font-size:12px">
+          Students see these in the Synapse sidebar inside VS Code. Clicking creates a Python file with the question
+          pre-commented.
+        </div>
+        <div id="hw-list"></div>
+      </div>
+    </section>
+
+    <!-- Create Homework Modal -->
+    <div class="modal-overlay" id="hw-modal"
+      style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.65);backdrop-filter:blur(8px);z-index:200;align-items:center;justify-content:center">
+      <div class="modal" style="max-width:500px">
+        <button class="modal-close" id="hw-modal-close">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+            stroke-linecap="round">
+            <line x1="18" y1="6" x2="6" y2="18" />
+            <line x1="6" y1="6" x2="18" y2="18" />
+          </svg>
+        </button>
+        <div class="modal-title">Create Homework Question</div>
+        <div class="modal-sub">Students will see this in their VS Code sidebar. Clicking it creates a .py file with your
+          question as comments at the top.</div>
+
+        <div id="hw-error"
+          style="display:none;background:rgba(255,59,92,0.06);border:1px solid rgba(255,59,92,0.16);color:#FF6B8A;border-radius:8px;padding:10px 14px;font-size:12px;margin-bottom:14px">
+          Please fill in both the title and the problem statement.
+        </div>
+
+        <div class="field">
+          <label>Question Title</label>
+          <input type="text" id="hw-title" placeholder="e.g. Fibonacci with Memoization" />
+        </div>
+        <div class="field">
+          <label>Problem Statement</label>
+          <textarea id="hw-body" rows="6"
+            placeholder="Describe the problem. Each line becomes a # comment at the top of the student's Python file."
+            style="width:100%;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:9px;padding:11px 14px;font-size:13px;color:#fff;font-family:inherit;outline:none;resize:vertical;transition:border-color 0.15s"
+            onfocus="this.style.borderColor='rgba(0,229,255,0.35)'"
+            onblur="this.style.borderColor='rgba(255,255,255,0.06)'"></textarea>
+        </div>
+        <div class="field">
+          <label>Due Date <span style="color:var(--text3);font-weight:400;text-transform:none">(optional)</span></label>
+          <input type="date" id="hw-due" />
+        </div>
+        <div
+          style="margin-bottom:14px;background:rgba(0,229,255,0.03);border:1px solid rgba(0,229,255,0.10);border-radius:9px;padding:12px 14px">
+          <div
+            style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">
+            Preview — file students receive</div>
+          <code id="hw-preview"
+            style="font-size:11px;color:var(--cyan);white-space:pre-wrap;line-height:1.6">Fill in the title above to preview…</code>
+        </div>
+        <button class="btn-primary" id="hw-submit">Publish to Students</button>
+      </div>
+    </div>
+
+  </main>
+
+  <script type="module" src="app.js"></script>
+  <script type="module" src="homework.js"></script>
+</body>
+
+</html>

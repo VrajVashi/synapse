@@ -1,0 +1,498 @@
+import * as vscode from 'vscode';
+import { DebugSession } from './sessionRecorder';
+
+const BASE_URL_CONFIG_KEY = 'synapse.apiEndpoint';
+
+export class SynapseApi {
+    public getBase(): string {
+        const config = vscode.workspace.getConfiguration('synapse');
+        const base = config.get<string>('apiEndpoint') || '';
+        return base;
+    }
+
+    async recordSession(session: DebugSession): Promise<void> {
+        const base = this.getBase();
+        if (!base) { return; } // No API configured yet
+
+        // Inject cohortId from VS Code settings so the Lambda can write it to DynamoDB
+        const config = vscode.workspace.getConfiguration('synapse');
+        const cohortId = config.get<string>('cohortId') || '';
+        await this.post('/sessions', { ...session, cohortId });
+    }
+
+    async getSessions(studentId: string): Promise<DebugSession[]> {
+        const base = this.getBase();
+        if (!base) { return getHardcodedReplaySessions(); }
+
+        try {
+            const response = await fetch(`${base}/sessions?studentId=${encodeURIComponent(studentId)}`);
+            if (!response.ok) { return getHardcodedReplaySessions(); }
+            const data = await response.json() as { sessions: DebugSession[] };
+            const sessions = data.sessions || [];
+            return sessions.length > 0 ? sessions : getHardcodedReplaySessions();
+        } catch {
+            return getHardcodedReplaySessions();
+        }
+    }
+
+    async getCohortPatterns(errorType: string): Promise<CohortPattern | null> {
+        const base = this.getBase();
+        if (!base) { return null; }
+
+        try {
+            const response = await fetch(`${base}/cohort/patterns?errorType=${encodeURIComponent(errorType)}`);
+            if (!response.ok) { return null; }
+            return await response.json() as CohortPattern;
+        } catch {
+            return null;
+        }
+    }
+
+    async getStudentDNA(studentId: string): Promise<StudentDNA | null> {
+        const base = this.getBase();
+        if (!base) { return null; }
+
+        try {
+            const response = await fetch(`${base}/students/${encodeURIComponent(studentId)}/dna`);
+            if (!response.ok) { return null; }
+            return await response.json() as StudentDNA;
+        } catch {
+            return null;
+        }
+    }
+
+    async getQuiz(errorType: string): Promise<QuizQuestion[]> {
+        const base = this.getBase();
+        if (!base) { return getHardcodedQuiz(errorType); }
+
+        try {
+            const response = await fetch(`${base}/quiz?errorType=${encodeURIComponent(errorType)}`);
+            if (!response.ok) { return getHardcodedQuiz(errorType); }
+            const data = await response.json() as { questions: QuizQuestion[] };
+            return data.questions || getHardcodedQuiz(errorType);
+        } catch {
+            return getHardcodedQuiz(errorType);
+        }
+    }
+
+    async submitQuizResult(studentId: string, errorType: string, score: number, total: number): Promise<void> {
+        const base = this.getBase();
+        if (!base) { return; }
+
+        await this.post('/quiz/results', { studentId, errorType, score, total, timestamp: new Date().toISOString() });
+    }
+
+    async analyzeWithAI(request: {
+        code: string;
+        errorType: string;
+        errorMessage: string;
+        line: number;
+        filePath: string;
+        studentId?: string;
+        cohortContext?: { crashRate: number; avgFixMinutes: number };
+    }): Promise<AIAnalysisResult | null> {
+        const base = this.getBase();
+        if (!base) {
+            console.log('[Synapse API] No API endpoint configured — set synapse.apiEndpoint in settings');
+            return null;
+        }
+
+        try {
+            console.log(`[Synapse API] POST ${base}/analyze (errorType: ${request.errorType})`);
+            const response = await fetch(`${base}/analyze`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(request),
+            });
+            if (!response.ok) {
+                const errText = await response.text();
+                console.error(`[Synapse API] /analyze returned ${response.status}: ${errText}`);
+                return null;
+            }
+            const result = await response.json() as AIAnalysisResult;
+            console.log('[Synapse API] /analyze response received:', JSON.stringify(result).substring(0, 200));
+            return result;
+        } catch (err) {
+            console.error('[Synapse API] /analyze fetch failed:', err);
+            return null;
+        }
+    }
+
+    async getHomework(classroomId: string): Promise<HWQuestion[]> {
+        const base = this.getBase();
+        if (!base) { return MOCK_HW_QUESTIONS; } // fallback to mock when no API
+
+        try {
+            const response = await fetch(`${base}/classroom/${encodeURIComponent(classroomId)}/homework`);
+            if (!response.ok) { return MOCK_HW_QUESTIONS; }
+            const data = await response.json() as { questions: HWQuestion[] };
+            const questions = data.questions || [];
+            // If backend returns empty, fall back to mock for demo
+            return questions.length > 0 ? questions : MOCK_HW_QUESTIONS;
+        } catch {
+            return MOCK_HW_QUESTIONS;
+        }
+    }
+
+    private async post(path: string, body: unknown): Promise<void> {
+        const base = this.getBase();
+        if (!base) { return; }
+
+        try {
+            await fetch(`${base}${path}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body),
+            });
+        } catch {
+            // Silently fail — offline mode
+        }
+    }
+}
+
+// ─── Types ───────────────────────────────────────────────────────────────────
+
+export interface CohortPattern {
+    errorType: string;
+    crashRate: number;
+    avgFixMinutes: number;
+    totalSessions: number;
+    topFixes: string[];
+}
+
+export interface StudentDNA {
+    studentId: string;
+    debuggingStyle: 'trial-and-error' | 'systematic' | 'visual';
+    avgFixMinutes: number;
+    classAvgMinutes: number;
+    topErrorTypes: Array<{ type: string; count: number }>;
+    totalSessions: number;
+    streakDays: number;
+}
+
+export interface QuizQuestion {
+    id: string;
+    errorType: string;
+    question: string;
+    options: string[];
+    correctIndex: number;
+    explanation: string;
+}
+
+export interface AIAnalysisResult {
+    explanation: string;
+    fixSuggestion: string;
+    conceptsToReview: string[];
+    confidence: number;
+    modelId: string;
+}
+
+export interface HWQuestion {
+    id: string;
+    title: string;
+    body: string;       // multi-line problem statement
+    filename: string;   // e.g. hw_fibonacci_memoization.py
+    status: 'open' | 'closed';
+    dueDate: string | null;
+}
+
+// Fallback mock questions shown when no API is configured
+const MOCK_HW_QUESTIONS: HWQuestion[] = [
+    {
+        id: 'hw-001',
+        title: 'Fibonacci with Memoization',
+        body: 'Write a function fibonacci(n) that returns the nth Fibonacci number.\nUse memoization (a dictionary cache) to avoid redundant calculations.\nYour function must handle n=0 (returns 0) and n=1 (returns 1).\nExample: fibonacci(10) should return 55.',
+        filename: 'hw_fibonacci_memoization.py',
+        status: 'open',
+        dueDate: '2026-03-10',
+    },
+    {
+        id: 'hw-002',
+        title: 'Safe Dictionary Lookup',
+        body: 'Write a function get_user_email(users, user_id) that safely looks up a user email from a dictionary.\nReturn the email string if found, or "not found" if the user_id does not exist.\nDo NOT use try/except — use dict.get() instead.',
+        filename: 'hw_safe_dict_lookup.py',
+        status: 'open',
+        dueDate: '2026-03-08',
+    },
+];
+
+// ─── Hardcoded Quiz Questions (MVP — zero hallucination risk) ─────────────
+
+function getHardcodedQuiz(errorType: string): QuizQuestion[] {
+    const quizzes: Record<string, QuizQuestion[]> = {
+        none_handling: [
+            {
+                id: 'nh1',
+                errorType: 'none_handling',
+                question: 'What does `dict.get("key")` return if the key doesn\'t exist?',
+                options: ['Raises KeyError', 'Returns None', 'Returns empty string ""', 'Returns False'],
+                correctIndex: 1,
+                explanation: '`dict.get()` returns None by default if the key is missing. Use `dict.get("key", default_value)` to provide a fallback.'
+            },
+            {
+                id: 'nh2',
+                errorType: 'none_handling',
+                question: 'Which code safely accesses `user.name` when `user` could be None?',
+                options: [
+                    'name = user.name',
+                    'name = user.name if user else "Unknown"',
+                    'name = user["name"]',
+                    'name = str(user.name)'
+                ],
+                correctIndex: 1,
+                explanation: 'The conditional expression `user.name if user else "Unknown"` checks for None before accessing the attribute. This is the Pythonic way to handle optional values.'
+            },
+            {
+                id: 'nh3',
+                errorType: 'none_handling',
+                question: 'What error is raised when you do `result.name` and `result` is None?',
+                options: ['ValueError', 'TypeError', 'AttributeError', 'NullPointerError'],
+                correctIndex: 2,
+                explanation: 'Python raises `AttributeError: \'NoneType\' object has no attribute \'name\'`. None is of type NoneType, which has no attributes. Always check `if result is not None:` first.'
+            },
+            {
+                id: 'nh4',
+                errorType: 'none_handling',
+                question: 'What\'s the safest way to chain attribute access that might be None?',
+                options: [
+                    'user.address.city',
+                    'user and user.address and user.address.city',
+                    'getattr(user, "address", None) and getattr(user.address, "city", None)',
+                    'try: user.address.city except: pass'
+                ],
+                correctIndex: 2,
+                explanation: '`getattr(obj, attr, default)` is safer than direct access. It returns the default if the attribute doesn\'t exist or the object is None-like. Option B also works but is less Pythonic.'
+            },
+            {
+                id: 'nh5',
+                errorType: 'none_handling',
+                question: 'Which operator helps with None defaults in Python 3.x?',
+                options: ['?? (nullish)', '|| (or)', 'or keyword', ':= (walrus)'],
+                correctIndex: 2,
+                explanation: 'Python uses `or` for defaults: `value = result or "default"`. Note: this also catches other falsy values (0, "", []). For strict None check use: `value = result if result is not None else "default"`. Python 3.8+ also has `:=` walrus but that\'s assignment, not default.'
+            },
+        ],
+        async_await: [
+            {
+                id: 'aa1',
+                errorType: 'async_await',
+                question: 'What happens if you call an async function without `await`?',
+                options: [
+                    'It runs synchronously',
+                    'It raises an error immediately',
+                    'You get a coroutine object (not the result)',
+                    'It runs in a background thread'
+                ],
+                correctIndex: 2,
+                explanation: 'Calling an async function without await returns a coroutine object — Python\'s way of saying "here\'s the recipe, but you haven\'t cooked it yet." You need `await` to actually execute it and get the result.'
+            },
+            {
+                id: 'aa2',
+                errorType: 'async_await',
+                question: '`await` can only be used inside what type of function?',
+                options: ['Any function', 'Generator functions only', 'async def functions', 'Class methods only'],
+                correctIndex: 2,
+                explanation: '`await` is only valid inside `async def` functions. Using it in a regular `def` function is a SyntaxError. The entire call chain from top to bottom must be async.'
+            },
+            {
+                id: 'aa3',
+                errorType: 'async_await',
+                question: 'How do you run an async function from synchronous Python code (e.g., script top-level)?',
+                options: [
+                    'async_func()',
+                    'await async_func()',
+                    'asyncio.run(async_func())',
+                    'Thread(target=async_func).start()'
+                ],
+                correctIndex: 2,
+                explanation: '`asyncio.run()` is the standard way to run an async function from synchronous code. It creates an event loop, runs the coroutine to completion, and closes the loop. Never call `await` at the module top level (unless using Python 3.10+ `asyncio.run()`).'
+            },
+        ],
+        try_except: [
+            {
+                id: 'te1',
+                errorType: 'try_except',
+                question: 'Which is the correct way to catch multiple exception types?',
+                options: [
+                    'except ValueError, TypeError:',
+                    'except (ValueError, TypeError):',
+                    'except ValueError | TypeError:',
+                    'except ValueError or TypeError:'
+                ],
+                correctIndex: 1,
+                explanation: 'Use a tuple `except (ValueError, TypeError):` to catch multiple exception types. You can also stack multiple `except` blocks. The comma syntax `except ValueError, TypeError:` is Python 2 only.'
+            },
+            {
+                id: 'te2',
+                errorType: 'try_except',
+                question: 'What\'s wrong with using bare `except:` (no exception type)?',
+                options: [
+                    'Nothing, it\'s fine',
+                    'It\'s slower than specific exceptions',
+                    'It catches everything including KeyboardInterrupt and SystemExit',
+                    'It only works in Python 2'
+                ],
+                correctIndex: 2,
+                explanation: 'Bare `except:` catches absolutely everything, including `KeyboardInterrupt` (Ctrl+C) and `SystemExit`. This means you can\'t stop the program! Always catch specific exceptions, or at minimum use `except Exception:` which excludes system exceptions.'
+            },
+        ],
+        list_ops: [
+            {
+                id: 'lo1',
+                errorType: 'list_ops',
+                question: 'What does `items[-1]` return?',
+                options: ['Raises IndexError', 'Returns None', 'Returns the last element', 'Returns the second-to-last element'],
+                correctIndex: 2,
+                explanation: 'Negative indexing in Python accesses elements from the end. `items[-1]` is the last element, `items[-2]` is second-to-last, etc. If the list is empty, `items[-1]` raises `IndexError`.'
+            },
+            {
+                id: 'lo2',
+                errorType: 'list_ops',
+                question: 'How do you safely get the first element of a list that might be empty?',
+                options: [
+                    'items[0]',
+                    'items.first()',
+                    'items[0] if items else None',
+                    'items.get(0)'
+                ],
+                correctIndex: 2,
+                explanation: '`items[0] if items else None` is Pythonic and safe. An empty list is falsy in Python. `items[0]` alone raises `IndexError` on empty lists. Lists don\'t have `.first()` or `.get()` methods.'
+            },
+        ]
+    };
+
+    return quizzes[errorType] || quizzes.none_handling;
+}
+
+// ─── Hardcoded Replay Sessions (matches test.py) ──────────────────────────
+
+function getHardcodedReplaySessions(): DebugSession[] {
+    const now = Date.now();
+    return [
+        {
+            sessionId: 's_demo_none_handling',
+            studentId: 'demo-student',
+            filePath: 'test.py',
+            errorType: 'none_handling',
+            startTime: new Date(now - 28 * 60_000).toISOString(),   // 28 min ago
+            resolved: true,
+            totalDurationSeconds: 480,                              // 8 min to fix
+            attempts: [
+                {
+                    attemptNumber: 1,
+                    timestamp: new Date(now - 28 * 60_000).toISOString(),
+                    filePath: 'test.py',
+                    errorType: 'none_handling',
+                    codeSnapshot: 'result = db.get("key")\nprint(result.name)',
+                    resolved: false,
+                    durationSeconds: 0
+                },
+                {
+                    attemptNumber: 2,
+                    timestamp: new Date(now - 24 * 60_000).toISOString(),
+                    filePath: 'test.py',
+                    errorType: 'none_handling',
+                    codeSnapshot: 'result = db.get("key")\nif result:\n    print(result.name)',
+                    resolved: false,
+                    durationSeconds: 240
+                },
+                {
+                    attemptNumber: 3,
+                    timestamp: new Date(now - 20 * 60_000).toISOString(),
+                    filePath: 'test.py',
+                    errorType: 'none_handling',
+                    codeSnapshot: 'result = db.get("key")\nif result is not None:\n    print(result.name)\nelse:\n    print("Key not found")',
+                    resolved: true,
+                    durationSeconds: 480
+                }
+            ]
+        },
+        {
+            sessionId: 's_demo_try_except',
+            studentId: 'demo-student',
+            filePath: 'test.py',
+            errorType: 'try_except',
+            startTime: new Date(now - 18 * 60_000).toISOString(),   // 18 min ago
+            resolved: true,
+            totalDurationSeconds: 300,                              // 5 min to fix
+            attempts: [
+                {
+                    attemptNumber: 1,
+                    timestamp: new Date(now - 18 * 60_000).toISOString(),
+                    filePath: 'test.py',
+                    errorType: 'try_except',
+                    codeSnapshot: 'data = json.loads(input_string)',
+                    resolved: false,
+                    durationSeconds: 0
+                },
+                {
+                    attemptNumber: 2,
+                    timestamp: new Date(now - 13 * 60_000).toISOString(),
+                    filePath: 'test.py',
+                    errorType: 'try_except',
+                    codeSnapshot: 'try:\n    data = json.loads(input_string)\nexcept json.JSONDecodeError:\n    data = {}',
+                    resolved: true,
+                    durationSeconds: 300
+                }
+            ]
+        },
+        {
+            sessionId: 's_demo_async_await',
+            studentId: 'demo-student',
+            filePath: 'test.py',
+            errorType: 'async_await',
+            startTime: new Date(now - 12 * 60_000).toISOString(),   // 12 min ago
+            resolved: false,
+            totalDurationSeconds: 720,                              // 12 min, still active
+            attempts: [
+                {
+                    attemptNumber: 1,
+                    timestamp: new Date(now - 12 * 60_000).toISOString(),
+                    filePath: 'test.py',
+                    errorType: 'async_await',
+                    codeSnapshot: 'def my_function():\n    await some_async_call()',
+                    resolved: false,
+                    durationSeconds: 0
+                },
+                {
+                    attemptNumber: 2,
+                    timestamp: new Date(now - 7 * 60_000).toISOString(),
+                    filePath: 'test.py',
+                    errorType: 'async_await',
+                    codeSnapshot: 'def my_function():\n    result = some_async_call()\n    # still not using async def',
+                    resolved: false,
+                    durationSeconds: 300
+                }
+            ]
+        },
+        {
+            sessionId: 's_demo_list_ops',
+            studentId: 'demo-student',
+            filePath: 'test.py',
+            errorType: 'list_ops',
+            startTime: new Date(now - 5 * 60_000).toISOString(),    // 5 min ago
+            resolved: true,
+            totalDurationSeconds: 180,                              // 3 min to fix
+            attempts: [
+                {
+                    attemptNumber: 1,
+                    timestamp: new Date(now - 5 * 60_000).toISOString(),
+                    filePath: 'test.py',
+                    errorType: 'list_ops',
+                    codeSnapshot: 'items = [1, 2, 3]\nx = items[5]',
+                    resolved: false,
+                    durationSeconds: 0
+                },
+                {
+                    attemptNumber: 2,
+                    timestamp: new Date(now - 2 * 60_000).toISOString(),
+                    filePath: 'test.py',
+                    errorType: 'list_ops',
+                    codeSnapshot: 'items = [1, 2, 3]\nif len(items) > 5:\n    x = items[5]\nelse:\n    x = None',
+                    resolved: true,
+                    durationSeconds: 180
+                }
+            ]
+        }
+    ];
+}

@@ -68,17 +68,16 @@ export default function StudentPage() {
 
     useEffect(() => {
         if (!user) { navigate('/auth'); return; }
-        const id = localStorage.getItem('synapse_classroom_id') || '';
-        if (id) setClassroomId(id);
+        // Load previously joined classroom from user profile (DynamoDB)
+        if (user.classroomId) setClassroomId(user.classroomId);
     }, [user, navigate]);
 
     const handleSave = async () => {
         const id = classroomId.trim().toUpperCase();
         if (!id) return;
         setClassroomId(id);
-        localStorage.setItem('synapse_classroom_id', id);
 
-        // Register student in the backend
+        // Register in backend — this writes classroomId onto the user's DynamoDB profile
         const studentId = user?.email || user?.name || 'anonymous';
         const studentName = user?.name || user?.email || 'Student';
         await API.joinClassroom(id, studentId, studentName).catch(() => { });

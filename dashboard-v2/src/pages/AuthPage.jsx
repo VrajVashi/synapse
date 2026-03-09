@@ -30,16 +30,16 @@ export default function AuthPage() {
         e.preventDefault();
         setError('');
         setLoading(true);
-        await new Promise(r => setTimeout(r, 600));
 
         if (mode === 'signin') {
-            const result = login(email, password);
+            const result = await login(email, password);
             if (!result.success) { setError(result.error); setLoading(false); return; }
             navigate(result.user.role === 'teacher' ? '/classrooms' : '/student');
         } else {
             if (!name || password.length < 6) { setError('Fill all fields (min 6 char password)'); setLoading(false); return; }
-            const u = signup(name, email, password, role);
-            navigate(u.role === 'teacher' ? '/classrooms' : '/student');
+            const result = await signup(name, email, password, role);
+            if (!result.success) { setError(result.error); setLoading(false); return; }
+            navigate(result.user.role === 'teacher' ? '/classrooms' : '/student');
         }
     };
 

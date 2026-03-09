@@ -4,7 +4,7 @@
     "description": "Synapse Express backend — Railway deployment with DynamoDB, S3, CloudWatch, SNS",
     "main": "server.js",
     "scripts": {
-        "start": "node server.js"
+        "start": "node --env-file=.env server.js"
     },
     "dependencies": {
         "@aws-sdk/client-cloudwatch": "^3.0.0",

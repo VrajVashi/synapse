@@ -1,12 +1,18 @@
 {
     "name": "synapse-local-backend",
     "version": "1.0.0",
-    "description": "Local mock server for Synapse to avoid AWS Docker dependencies",
+    "description": "Synapse Express backend — Railway deployment with DynamoDB, S3, CloudWatch, SNS",
     "main": "server.js",
     "scripts": {
         "start": "node server.js"
     },
     "dependencies": {
+        "@aws-sdk/client-cloudwatch": "^3.0.0",
+        "@aws-sdk/client-dynamodb": "^3.0.0",
+        "@aws-sdk/client-s3": "^3.0.0",
+        "@aws-sdk/client-sns": "^3.0.0",
+        "@aws-sdk/lib-dynamodb": "^3.0.0",
+        "bcryptjs": "^2.4.3",
         "cors": "^2.8.5",
         "express": "^4.18.2",
         "groq-sdk": "^0.5.0"

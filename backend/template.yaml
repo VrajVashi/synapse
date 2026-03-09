@@ -529,6 +529,42 @@ Resources:
         - Key: Environment
           Value: dev
 
+  # ============================================================
+  # ClassroomsTable
+  # PK: classroom_id
+  # ============================================================
+  ClassroomsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: synapse-classrooms
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: classroom_id
+          AttributeType: S
+      KeySchema:
+        - AttributeName: classroom_id
+          KeyType: HASH
+      Tags:
+        - Key: Project
+          Value: Synapse
+        - Key: Environment
+          Value: dev
+
+  # ============================================================
+  # AtRiskAlertsTopic — SNS topic for at-risk student notifications
+  # Instructors subscribe their email via POST /admin/subscribe-alerts
+  # ============================================================
+  AtRiskAlertsTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: synapse-at-risk-alerts
+      DisplayName: "Synapse At-Risk Student Alerts"
+      Tags:
+        - Key: Project
+          Value: Synapse
+        - Key: Environment
+          Value: dev
+
 Outputs:
   ApiUrl:
     Description: API Gateway endpoint URL
@@ -565,3 +601,15 @@ Outputs:
   CodeSnapshotsBucketArn:
     Description: ARN of code snapshots bucket
     Value: !GetAtt CodeSnapshotsBucket.Arn
+
+  AtRiskAlertsTopicArn:
+    Description: SNS topic ARN for at-risk student alerts
+    Value: !Ref AtRiskAlertsTopic
+
+  ClassroomsTableName:
+    Description: DynamoDB table for classrooms
+    Value: !Ref ClassroomsTable
+
+  ClassroomsTableArn:
+    Description: ARN of classrooms table
+    Value: !GetAtt ClassroomsTable.Arn

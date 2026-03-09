@@ -4,7 +4,7 @@
     "description": "Local mock server for Synapse to avoid AWS Docker dependencies",
     "main": "server.js",
     "scripts": {
-        "start": "node server.js"
+        "start": "node --env-file=.env server.js"
     },
     "dependencies": {
         "cors": "^2.8.5",

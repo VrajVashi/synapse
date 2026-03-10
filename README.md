@@ -200,6 +200,6 @@ Production deployment = swap `backend-local` with Lambda + DynamoDB, zero dashbo
 
 ## Team
 
-**Team:** Determinist  
+**Team:** Awzxshi  
 **Track:** PS01 — AI for Learning & Developer Productivity  
 **Hackathon:** AWS AI for Bharat
